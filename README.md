@@ -4,7 +4,7 @@ SK AX Full-Stack Engineering / Frontend framework: Vue.js 실습 프로젝트
 
 단원별 Hands on 과제를 통해 하나의 날씨 대시보드를 단계적으로 발전시켜 나갑니다.
 
-- **U124 / SKALA 4기 울산 4반:**
+- **U124 / SKALA 4기 울산 4반**
 - **개발 환경:** macOS / Node.js v26.5.0 / npm v12.0.1
 - **프로젝트 생성:** create-vue 3.22.3 (Router / Pinia / ESLint / Prettier)
 
