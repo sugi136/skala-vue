@@ -1,0 +1,64 @@
+<script setup>
+// [주의] Child 컴포넌트는 import하지 않는다. Parent가 알아서 불러온다
+
+// 1. Reactive State
+import ReactiveRef from './components/practices/composition/ReactiveRef.vue'
+import ReactiveReactive from './components/practices/composition/ReactiveReactive.vue'
+// 2. Computed & Watchers
+import ComputedBasic from './components/practices/composition/ComputedBasic.vue'
+import WatchersBasic from './components/practices/composition/WatchersBasic.vue'
+import WatchersMulti from './components/practices/composition/WatchersMulti.vue'
+import WatchersDeep from './components/practices/composition/WatchersDeep.vue'
+import WatchersReactive from './components/practices/composition/WatchersReactive.vue'
+import WatchersRefArray from './components/practices/composition/WatchersRefArray.vue'
+import WatchersReactiveArray from './components/practices/composition/WatchersReactiveArray.vue'
+import WatchersWatchEffect from './components/practices/composition/WatchersWatchEffect.vue'
+// 3. Component Lifecycle
+// [문법] './' 와 '@/' 는 결과가 같다. @ = src/
+import LifecycleParent from '@/components/practices/component/LifecycleParent.vue'
+// 4. Props & Emits
+import PropsEmitsParent from '@/components/practices/component/PropsEmitsParent.vue'
+// 5. Component Slot
+import SlotDefaultParent from '@/components/practices/component/SlotDefaultParent.vue'
+import SlotNamedParent from '@/components/practices/component/SlotNamedParent.vue'
+import SlotScopedParent from '@/components/practices/component/SlotScopedParent.vue'
+</script>
+
+<template>
+  <div class="practice-container">
+    <h1>1. Reactive State</h1>
+    <hr />
+    <ReactiveRef />
+    <ReactiveReactive />
+
+    <h1>2. Computed &amp; Watchers</h1>
+    <hr />
+    <ComputedBasic />
+    <WatchersBasic />
+    <WatchersMulti />
+    <WatchersDeep />
+    <WatchersReactive />
+    <WatchersRefArray />
+    <WatchersReactiveArray />
+    <WatchersWatchEffect />
+
+    <h1>3. Component Lifecycle</h1>
+    <hr />
+    <LifecycleParent />
+
+    <h1>4. Props &amp; Emits</h1>
+    <hr />
+    <PropsEmitsParent />
+
+    <h1>5. Component Slot</h1>
+    <hr />
+    <SlotDefaultParent />
+    <SlotNamedParent />
+    <SlotScopedParent />
+  </div>
+</template>
+
+<style>
+/* [주의] scoped가 없다 -> 전역 스타일로 모든 자식 컴포넌트에 적용 */
+@import '@/assets/practice.css';
+</style>

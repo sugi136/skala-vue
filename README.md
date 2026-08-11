@@ -1,127 +1,152 @@
-# skala-vue
+# skala-vue — Weather Dashboard
 
-SK AX Full-Stack Engineering — Frontend framework: Vue.js 실습 저장소
+SK AX Full-Stack Engineering / Frontend framework: Vue.js 실습 프로젝트
 
-- **U124 / SKALA 4기 울산캠퍼스:**
+단원별 Hands on 과제를 통해 하나의 날씨 대시보드를 단계적으로 발전시켜 나갑니다.
+
+- **U124 / SKALA 4기 울산 4반:**
 - **개발 환경:** macOS / Node.js v26.5.0 / npm v12.0.1
-- **프로젝트 생성:** create-vue 3.22.3
+- **프로젝트 생성:** create-vue 3.22.3 (Router / Pinia / ESLint / Prettier)
 
 ## 실행 방법
 
 ```bash
-npm install      # 의존성 설치
-npm run dev      # 개발 서버 (http://localhost:5173)
-npm run build    # 배포용 빌드 (dist/ 생성)
-npm run lint     # ESLint 검사
-npm run format   # Prettier 포맷팅
+npm install
+npm run dev      # http://localhost:5173
 ```
+
+## 진행 현황
+
+| 단원                   | Hands on            | 상태    |
+| ---------------------- | ------------------- | ------- |
+| 2. Vue Syntax          | Weather Mockup      | ✅ 완료 |
+| 3. Composition API     | Weather Composition | 예정    |
+| 4. Vue Components      | Weather Component   | 예정    |
+| 5. Vue Router          | Weather Router      | 예정    |
+| 6. Pinia               | Weather Store       | 예정    |
+| 7. Axios               | Weather Axios       | 예정    |
+| 8. UI Library          | Weather UI Library  | 예정    |
+| 9. Modern JavaScript   | Weather Refinement  | 예정    |
+| 10. Build & Deployment | Weather Deployment  | 예정    |
 
 ---
 
-# 실습 기록
+## 2026-08-11 — 2장 Hands on : Weather Mockup
 
-## 2026-08-10 (월)
+**파일:** `src/components/exercise/WeatherMockup.vue`
 
-**단원:** 1. Getting Started with Vue.js / 2. Vue Syntax
+API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조를 구성
+일부 레이아웃과 기능을 확장
 
-### 환경 구성 및 저장소 세팅
+### 화면 구성
 
-### 1. 로컬 개발 환경 구성
+| 영역 | 내용                                                                           |
+| ---- | ------------------------------------------------------------------------------ |
+| 헤더 | 대시보드 제목, 오늘 날짜, 도시 검색창, 검색어 실시간 표시                      |
+| 좌측 | 지역별 날씨 현황 — 도시 카드 3개 (아이콘 / 기온 / 상태 / 기온 배지 / 상세보기) |
+| 우측 | 오늘의 요약 — 최고·최저·평균 기온, 더운 도시 수                                |
+| 하단 | 상태바 — 선택된 도시 안내                                                      |
 
-- Node.js 설치 및 확인 (v26.5.0 / npm 12.0.1)
-- VS Code 확장 설치: Vue (Official), ESLint, Prettier
-- Git 사용자 정보 설정
+### 적용한 2장 문법
 
-### 2. GitHub 연동
+| 문법               | 적용 위치                                                        |
+| ------------------ | ---------------------------------------------------------------- |
+| `ref()`            | `weatherList`, `searchQuery`, `selectedCityInfo`, `summaryList`  |
+| `{{ }}` 보간법     | 도시명·기온·요약 값 출력                                         |
+| `v-for` + `:key`   | 도시 카드 반복(`item.id`), 요약 항목 반복(`sum.id`)              |
+| `v-if` / `v-else`  | 25°C 기준 기온 배지 분기, 검색어 입력 여부에 따른 안내 문구 분기 |
+| `:class` 객체 형식 | 선택/강조 스타일 토글                                            |
+| `:class` 배열 형식 | `['tone-' + sum.tone]` — 요약 항목별 배경색을 동적으로 조립      |
+| `@click`           | 카드 클릭 시 하단 상태바 갱신 (Inline Handler)                   |
+| `@click.stop`      | 상세보기 버튼 — 부모 카드로의 버블링 차단                        |
+| `v-model.trim`     | 검색창 양방향 바인딩, 앞뒤 공백 자동 제거                        |
+| `<style scoped>`   | 컴포넌트 전용 스타일 격리                                        |
 
-- SSH 키 생성 후 GitHub 계정 등록, `ssh -T git@github.com` 인증 확인
-- 제출용 Public 저장소 `sugi136/skala-vue` 생성
+### Customization
 
-### 3. Project Scaffolding
+추가, 변경사항
 
-`npm create vue@3.22.3` 로 생성. 선택 옵션:
+- **레이아웃 재구성** — 세로 나열 형태를 헤더 / 좌·우 2단 그리드 / 하단 상태바 구조로 변경
+- **오늘의 요약 패널 추가** — 최고·최저·평균 기온과 더운 도시 수를 우측에 배치
+- **오늘 날짜 표시** — `toLocaleDateString('ko-KR')`로 "2026년 8월 11일 화요일" 형식 출력
+- **검색어 실시간 표시** — `<template v-if>`로 입력 여부에 따라 안내 문구를 분기
+- **`icon` 필드 추가** — 날씨 상태를 이모지로 시각화 (7장에서 `data.weather[0].icon` 기반 이미지로 교체 예정)
+- **디자인 개선** — 그라데이션 헤더, 카드 hover 시 상승 효과, 기온 배지 pill 형태, 요약 항목별 톤 컬러
 
-| 항목                               | 선택 |
-| ---------------------------------- | ---- |
-| TypeScript / JSX                   | X    |
-| Router (SPA development)           | V    |
-| Pinia (state management)           | V    |
-| Vitest / E2E Testing               | X    |
-| Linter (ESLint)                    | V    |
-| Formatter (Prettier)               | V    |
-| Experimental (Oxfmt, Vue 3.6 beta) | X    |
-| Skip all example code              | No   |
+### 향후 확장을 고려한 설계
 
-### 4. 실행 및 구조 확인
+- **강사님 예제의 데이터 키 구조를 그대로 유지** — `name` / `temp` / `status`가 OpenWeather 응답(`data.name`, `data.main.temp`, `data.weather[0].description`)과 1:1로 대응. 7장에서 `<template>` 수정 없이 데이터 소스만 교체할 수 있음
+- **추가한 `icon` 필드도 API 대응 가능한 자리로 설정** — `data.weather[0].icon`
+- **요약 값을 전부 `weatherList`에서 도출 가능한 항목으로 구성** — 최고/최저는 `Math.max`/`Math.min`, 평균은 `reduce`, 더운 도시 수는 `filter().length`. 3장에서 `computed`로 전환 예정
 
-- `npm install` → `npm run dev` → localhost:5173 정상 구동
-- `src/components`(HelloWorld, TheWelcome, WelcomeItem), `src/views`(HomeView, AboutView) 확인
-- Vue Devtools 접속 확인
+### 배운 점 / 해결한 문제
 
-### 5. 원격 저장소 연동
+- `App.vue`의 태그 짝이 맞지 않아 `Invalid end tag` 오류 발생 → 닫는 태그 확인으로 해결
+- 자식 컴포넌트 파일에 `import` 구문을 잘못 작성해 `Failed to resolve import` 오류 발생 → **부모(App.vue)만 컴포넌트를 import하고, 자식은 자기 내용만 갖는다**는 구조를 이해
+- `@click.stop`을 제거해 보며 이벤트 버블링을 직접 확인 — 상세보기 버튼 클릭이 부모 카드의 클릭 핸들러까지 함께 실행시키는 현상 관찰
 
-```bash
-git init && git add . && git commit -m "chore: chore: init skala-vue project"
-git branch -M main
-git remote add origin git@github.com:sugi136/skala-vue.git
-git push -u origin main
-```
+## 2026-08-11 — 3장 Hands on : Weather Composition
 
-시크릿 창에서 로그인 없이 접근 가능 확인 완료
+**파일:** `src/components/exercise/WeatherComposition.vue`
 
-### 2장 실습
+2장 Mockup에 하드코딩되어 있던 값들을 Composition API로 전환했습니다.
+화면 구조는 그대로 두고, 데이터가 계산되는 방식만 바꾸는 것이 이번 단원의 목표입니다.
 
-### 1. 학습환경 구성
+### 2장 → 3장 변화
 
-`src/components/practices/basic/` 폴더를 만들고, 공통 스타일 `src/assets/practice.css`를 App.vue에 전역 등록 (`scoped` 없이 `@import` — 모든 실습 컴포넌트가 공유하는 클래스라서)
+| 항목      | 2장 Mockup             | 3장 Composition                                 |
+| --------- | ---------------------- | ----------------------------------------------- |
+| 검색창    | 입력값을 화면에 표시만 | `computed`로 목록을 실제 필터링, 결과 건수 표시 |
+| 요약 패널 | 값을 직접 적어둔 배열  | `computed`로 `weatherList`에서 자동 계산        |
+| 헤더 색상 | 고정                   | `computed`로 선택 도시의 날씨에 따라 변경       |
+| 변화 추적 | 없음                   | `watch` 2개 + `watchEffect` 1개                 |
+| 빈 결과   | 처리 없음              | 안내 문구 출력                                  |
 
-| 파일            | 학습 내용                                                                                                   |
-| --------------- | ----------------------------------------------------------------------------------------------------------- |
-| `SampleOne.vue` | 일반 변수와 `ref()` 비교. 일반 변수는 값이 변해도 화면이 갱신되지 않고, 반응형 변수가 바뀌는 순간 함께 반영 |
-| `SampleTwo.vue` | Text Interpolation `{{ }}` 안에서 `toUpperCase()`, `Math.random()` 등 JavaScript 표현식이 그대로 동작       |
+### 적용한 3장 문법
 
-### 2. Vue Directive
+| 문법                     | 적용 위치                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `computed` — 필터링      | `filteredList` — 검색어에 따라 목록을 실시간으로 걸러냄                                                                  |
+| `computed` — 집계        | `temps`, `hottestCity`, `coldestCity`, `averageTemp`, `hotCityCount`                                                     |
+| `computed` — 의존성 체인 | `summaryList`가 위 computed들을 참조해 화면용 배열로 조립                                                                |
+| `computed` — 조건 매핑   | `selectedCity`, `headerTheme` — 선택 도시의 status를 CSS 클래스명으로 변환                                               |
+| `watch`                  | `selectedCityInfo` 변화 로그 (이전 값·새 값 비교), `searchQuery` 변화 시 결과 건수 로그                                  |
+| `watchEffect`            | 검색어와 표시 건수를 자동 추적 — 감시 대상을 지정하지 않아도 콜백 내부에서 읽은 값이 자동 등록되고, 선언 즉시 1회 실행됨 |
 
-| 파일                   | 학습 내용                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `VueHtml.vue`          | `v-html`은 문자열을 실제 HTML 엘리먼트로 해석해 주입 / `{{ }}`는 태그를 문자 그대로 출력                              |
-| `VueHtmlXss.vue`       | 사용자 입력을 `v-html`에 넣으면 태그가 실행되는 XSS 위험을 직접 재현                                                  |
-| `VueText.vue`          | `v-text`는 텍스트로만 출력 / `{{ }}`, `v-html`과 3자 비교                                                             |
-| `VueBind.vue`          | `:href`, `:src`, `:disabled`로 HTML 속성을 동적 바인딩                                                                |
-| `VueBindClass.vue`     | 클래스 바인딩 — 객체 형식(조건부 토글)과 배열 형식(다중 클래스 조립)                                                  |
-| `VueBindStyle.vue`     | 인라인 스타일 바인딩 / CSS의 `background-color`가 JS에서는 `backgroundColor`(camelCase)임을 확인                      |
-| `VueBindShorthand.vue` | 변수명과 속성명이 같을 때 값을 생략하는 same-name shorthand (`:id`, `:src`)                                           |
-| `VueIf.vue`            | `v-if` / `v-else-if` / `v-else`로 로그인 상태 분기와 점수별 학점 등급 다중 분기 구현                                  |
-| `VueShow.vue`          | `v-show` 토글. 개발자도구 Elements 탭에서 **v-if는 DOM에서 제거되고 v-show는 `display:none`만 붙는** 차이를 직접 확인 |
-| `VueFor.vue`           | 배열 / 객체 / 배열 내 객체 반복 렌더링 / 객체 인자 순서 `(value, key, index)`, `:key`는 가능한 고유 id 사용           |
-| `VuePre.vue`           | 템플릿 구문을 해석하지 않고 원본 그대로 출력                                                                          |
-| `VueCloak.vue`         | 렌더링 전 깜빡임 방지 / `[v-cloak] { display: none }` CSS가 반드시 함께 필요                                          |
-| `VueOnce.vue`          | 최초 1회만 렌더링하고 이후 데이터가 바뀌어도 갱신되지 않음                                                            |
-| `VueMemo.vue`          | 지정한 의존값이 바뀔 때만 갱신 / `age`만 올리면 화면이 그대로, `name`이 바뀌는 순간 함께 반영됨                       |
+### 요약 패널 계산식
 
-### 3. Vue Event Handling
+2장 주석에 "(예정)"으로 적어둔 계산을 실제로 구현했습니다.
 
-| 파일                | 학습 내용                                                                                                             |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `EventBasic.vue`    | Inline Handler(`@click="count++"`)와 Method Handler(`@click="showAlert"`) 두 방식 비교                                |
-| `EventObject.vue`   | 이벤트 객체 수신 2가지 패턴 — 인자가 없으면 자동 전달, 인자가 있으면 `$event`를 명시적으로 전달                       |
-| `EventModifier.vue` | `.prevent`로 링크 기본 동작 차단, `.stop`으로 버블링 차단 / 수식어 없는 버튼은 자식·부모 alert가 두 번 뜨는 것을 확인 |
+| 항목      | 계산 방법                                            |
+| --------- | ---------------------------------------------------- |
+| 최고 기온 | `Math.max(...temps)` 후 `find`로 해당 도시 조회      |
+| 최저 기온 | `Math.min(...temps)` 후 `find`로 해당 도시 조회      |
+| 평균 기온 | `reduce`로 합계를 구한 뒤 개수로 나누고 `toFixed(1)` |
+| 더운 도시 | `filter(item => item.temp >= 25).length`             |
 
-### 4. Form Data Binding
+도시를 추가·삭제하면 요약 값이 자동으로 다시 계산됩니다.
 
-| 파일                | 학습 내용                                                                                                                 |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `ModelBasic.vue`    | `v-model`의 정체가 `:value` + `@input`의 축약형임을 두 입력창을 나란히 두고 확인                                          |
-| `ModelForm.vue`     | 요소별 v-model 매핑 — textarea/radio/select는 String, 단일 checkbox는 Boolean, **다중 checkbox는 반드시 배열(`ref([])`)** |
-| `ModelModifier.vue` | `.lazy`(change 시점 반영), `.number`(숫자 형변환), `.trim`(공백 제거)과 `.trim.number` 체이닝. `typeof`로 타입 변화 확인  |
+### Customization
 
-### 5. Vue Style
+- **한글 초성 검색 구현** — `getChosung()` 함수로 도시명에서 초성을 추출해 `ㅅㅇ` 같은 입력으로도 검색 가능. 완성형 한글이 유니코드 `0xAC00`부터 `(초성×588)+(중성×28)+종성` 구조로 배열된다는 점을 이용해, `588`로 나눈 몫으로 초성을 판별
+- **초성 매칭을 `startsWith`로 제한** — 처음에는 `includes`를 사용했으나, `ㅅ` 입력 시 `부산`(초성 `ㅂㅅ`)의 두 번째 초성까지 매칭되는 문제를 발견. 앞에서부터 매칭되도록 `startsWith`로 변경
+- **`v-model` 대신 `:value` + `@input` 사용** — `v-model`은 한글 IME 조합이 끝나야 값이 반영되어, `ㅅ`을 입력한 시점에는 필터가 동작하지 않음. `@input`은 조합 중에도 발생하므로 초성 입력 즉시 목록이 걸러짐
+- **날씨별 헤더 테마** — 선택 도시의 `status`를 `headerTheme` computed로 CSS 클래스명(`clear` / `cloud` / `cloudy` / `rain`)으로 변환하고, CSS 변수로 색상 세트를 교체. `transition`으로 0.6초에 걸쳐 부드럽게 전환
+- **경계선 없는 그라데이션** — 헤더와 본문에 각각 배경을 주면 반드시 이음새가 생기므로, 그라데이션을 `.dashboard-wrapper` 하나에만 적용하고 헤더·본문·상태바의 배경을 제거. 색 정지점을 `%`가 아닌 `px`로 고정해 목록이 길어져도 하늘 영역 비율이 유지되도록 함
+- **헤더에 선택 도시 표시** — 날짜 옆에 구분선과 함께 선택된 도시명을 출력 (`v-if`로 선택 전에는 숨김)
+- **선택 도시 아이콘 반영** — 헤더 우측 장식 아이콘이 선택 도시의 날씨 아이콘으로 변경 (`selectedCity?.icon ?? '☀️'`)
+- **선택 카드 강조** — `:class` 객체 바인딩으로 선택된 카드에 테두리와 그림자 적용
+- **검색 결과 건수 표시** — 검색 중일 때 `(N건)` 형태로 결과 개수 출력
 
-| 파일              | 학습 내용                                                                                                 |
-| ----------------- | --------------------------------------------------------------------------------------------------------- |
-| `StyleScoped.vue` | `<style scoped>`는 해당 컴포넌트에만 적용되고, 전역 `practice.css`의 클래스는 어디서든 사용 가능함을 비교 |
+### 설계 판단 기록
 
-### 오늘의 Customization / 메모
+- **`selectedCityId`를 별도 상태로 분리** — 기존 `selectedCityInfo`는 상태바용 문자열이라 어떤 도시가 선택됐는지 알 수 없음. id를 따로 관리하고 `selectedCity` computed로 객체를 조회하는 구조로 변경하여, 헤더 테마·아이콘·카드 강조가 모두 하나의 상태를 공유하도록 함
+- **요약을 `weatherList` 전체 기준으로 계산** — `filteredList` 기준으로 할 수도 있으나, "오늘의 요약"은 검색 여부와 무관한 전체 현황을 보여주는 것이 자연스럽다고 판단
+- **`computed` vs `watch` 사용 구분** — 값을 만들어내는 작업(필터링, 집계, 테마 결정)은 `computed`, 값 변화에 따른 부수효과(로그 출력, 향후 API 호출)는 `watch`로 분리
 
-- 강사님 저장소를 ZIP으로 받아 폴더명 변경 후 진행 -> 경험 및 커밋 히스토리 목적으로 직접 생성
-- 받아둔 코드는 원 이름으로 되돌린 후 별도 보관
+### 배운 점 / 확인한 것
+
+- `watchEffect`는 새로고침 직후 바로 로그가 찍히고, `watch`는 값이 실제로 바뀔 때만 실행되는 차이를 콘솔에서 직접 확인
+- `computed`는 의존값이 바뀌지 않으면 캐시된 결과를 재사용하므로, 매번 실행되는 일반 함수보다 효율적
+- `computed` 안에서 다른 `computed`를 참조할 수 있으며, 의존성이 자동으로 연결됨 (`summaryList` → `hottestCity` → `temps` → `weatherList`)
+- 한글 검색은 문자열 단위 비교만으로는 초성 검색이 불가능하며, 유니코드 연산이 필요함

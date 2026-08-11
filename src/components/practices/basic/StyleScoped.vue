@@ -14,6 +14,7 @@
 .title {
   color: #ff7675;
   font-weight: bold;
+  font-style: italic;
   font-size: 18px;
 }
 </style>
