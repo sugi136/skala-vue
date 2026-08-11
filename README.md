@@ -46,22 +46,23 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 | 좌측 | 지역별 날씨 현황 — 도시 카드 3개 (아이콘 / 기온 / 상태 / 기온 배지 / 상세보기) |
 | 우측 | 오늘의 요약 — 최고·최저·평균 기온, 더운 도시 수                                |
 | 하단 | 상태바 — 선택된 도시 안내                                                      |
+
 <img width="944" height="879" alt="스크린샷 2026-08-11 오후 5 09 04" src="https://github.com/user-attachments/assets/e0164173-64e8-4a29-957d-dbbae957c03c" />
 
 ### 적용한 2장 문법
 
-| 문법               | 적용 위치                                                        |
-| ------------------ | ---------------------------------------------------------------- |
-| `ref()`            | `weatherList`, `searchQuery`, `selectedCityInfo`, `summaryList`  |
-| `{{ }}` 보간법     | 도시명·기온·요약 값 출력                                         |
-| `v-for` + `:key`   | 도시 카드 반복(`item.id`), 요약 항목 반복(`sum.id`)              |
-| `v-if` / `v-else`  | 25°C 기준 기온 배지 분기, 검색어 입력 여부에 따른 안내 문구 분기 |
-| `:class` 객체 형식 | 선택/강조 스타일 토글                                            |
-| `:class` 배열 형식 | `['tone-' + sum.tone]` — 요약 항목별 배경색을 동적으로 조립      |
-| `@click`           | 카드 클릭 시 하단 상태바 갱신 (Inline Handler)                   |
-| `@click.stop`      | 상세보기 버튼 — 부모 카드로의 버블링 차단                        |
-| `v-model.trim`     | 검색창 양방향 바인딩, 앞뒤 공백 자동 제거                        |
-| `<style scoped>`   | 컴포넌트 전용 스타일 격리                                        |
+| 문법                | 적용 위치                                                                  |
+| ------------------- | -------------------------------------------------------------------------- |
+| `ref()`             | `weatherList`, `searchQuery`, `selectedCityInfo`, `summaryList`            |
+| `{{ }}` 보간법      | 도시명·기온·요약 값 출력                                                   |
+| `v-for` + `:key`    | 도시 카드 반복(`item.id`), 요약 항목 반복(`sum.id`)                        |
+| `v-if` / `v-else`   | 25°C 기준 기온 배지 분기, 검색어 입력 여부에 따른 안내 문구 분기           |
+| `:class` 객체 형식  | 선택/강조 스타일 토글                                                      |
+| `:class` 배열 형식  | `['tone-' + sum.tone]` — 요약 항목별 배경색을 동적으로 조립                |
+| `@click`            | 카드 클릭 시 하단 상태바 갱신 (Inline Handler)                             |
+| `@click.stop`       | 상세보기 버튼 — 부모 카드로의 버블링 차단                                  |
+| `:value` + `@input` | 검색창 단방향 바인딩 + 입력 이벤트 — 한글 IME 조합 중에도 값이 즉시 반영됨 |
+| `<style scoped>`    | 컴포넌트 전용 스타일 격리                                                  |
 
 ### Customization
 
@@ -73,6 +74,8 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 - **검색어 실시간 표시** — `<template v-if>`로 입력 여부에 따라 안내 문구를 분기
 - **`icon` 필드 추가** — 날씨 상태를 이모지로 시각화 (7장에서 `data.weather[0].icon` 기반 이미지로 교체 예정)
 - **디자인 개선** — 그라데이션 헤더, 카드 hover 시 상승 효과, 기온 배지 pill 형태, 요약 항목별 톤 컬러
+- **도시 데이터 추가** — 강사님 예제의 3개 도시(서울·수원·부산)에 제주·강릉을 추가하여 5개로 확장 (과제 요구사항 5번)
+- **스타일을 `src/assets/exercise.css`로 분리** — 컴포넌트 파일은 로직과 구조에 집중하고, Hands on 전용 스타일은 별도 관리 (강사님의 `practice.css` 구조와 동일한 방식)
 
 ### 향후 확장을 고려한 설계
 
@@ -104,7 +107,6 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 | 빈 결과   | 처리 없음              | 안내 문구 출력                                  |
 
 <img width="922" height="882" alt="스크린샷 2026-08-11 오후 5 10 40" src="https://github.com/user-attachments/assets/ef24e36f-c94c-4a62-bc40-3bae75bc7314" />
-
 
 ### 적용한 3장 문법
 
@@ -138,8 +140,8 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 - **`v-model` 대신 `:value` + `@input` 사용** — `v-model`은 한글 IME 조합이 끝나야 값이 반영되어, `ㅅ`을 입력한 시점에는 필터가 동작하지 않음. `@input`은 조합 중에도 발생하므로 초성 입력 즉시 목록이 걸러짐
 - **날씨별 헤더 테마** — 선택 도시의 `status`를 `headerTheme` computed로 CSS 클래스명(`clear` / `cloud` / `cloudy` / `rain`)으로 변환하고, CSS 변수로 색상 세트를 교체. `transition`으로 0.6초에 걸쳐 부드럽게 전환
   <img width="910" height="327" alt="스크린샷 2026-08-11 오후 5 17 44" src="https://github.com/user-attachments/assets/4b9fd449-ba29-49fd-b229-61c66be98079" />
-<img width="895" height="388" alt="스크린샷 2026-08-11 오후 5 18 05" src="https://github.com/user-attachments/assets/06b10e91-333d-4628-9bec-e0c776398a0c" />
-<img width="884" height="355" alt="스크린샷 2026-08-11 오후 5 18 22" src="https://github.com/user-attachments/assets/93dfd823-ffef-4d9f-a3e0-9af48ca4c556" />
+  <img width="895" height="388" alt="스크린샷 2026-08-11 오후 5 18 05" src="https://github.com/user-attachments/assets/06b10e91-333d-4628-9bec-e0c776398a0c" />
+  <img width="884" height="355" alt="스크린샷 2026-08-11 오후 5 18 22" src="https://github.com/user-attachments/assets/93dfd823-ffef-4d9f-a3e0-9af48ca4c556" />
 
 - **경계선 없는 그라데이션** — 헤더와 본문에 각각 배경을 주면 반드시 이음새가 생기므로, 그라데이션을 `.dashboard-wrapper` 하나에만 적용하고 헤더·본문·상태바의 배경을 제거. 색 정지점을 `%`가 아닌 `px`로 고정해 목록이 길어져도 하늘 영역 비율이 유지되도록 함
 - **헤더에 선택 도시 표시** — 날짜 옆에 구분선과 함께 선택된 도시명을 출력 (`v-if`로 선택 전에는 숨김)
@@ -151,7 +153,6 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 
 - **검색 결과 건수 표시** — 검색 중일 때 `(N건)` 형태로 결과 개수 출력
   <img width="513" height="150" alt="스크린샷 2026-08-11 오후 5 20 10" src="https://github.com/user-attachments/assets/6d2c839a-98bc-45f1-b808-e0e245505863" />
-
 
 ### 설계 판단 기록
 

@@ -68,7 +68,12 @@ const showDetail = (cityName, status) => {
       <!--  검색 박스 -->
       <div class="search-box">
         <span class="search-icon">🔍</span>
-        <input type="text" v-model.trim="searchQuery" placeholder="검색할 도시 이름 입력" />
+        <input
+          type="text"
+          :value="searchQuery"
+          @input="(e) => (searchQuery = e.target.value)"
+          placeholder="검색할 도시 이름 입력"
+        />
       </div>
 
       <!-- [핵심] v-if / v-else — 입력 여부에 따라 다른 안내 -->
