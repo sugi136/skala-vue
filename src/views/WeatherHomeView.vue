@@ -1,11 +1,9 @@
 <script setup>
 // ============================================
-// 5장 Hands on : views/WeatherHomeView.vue
-//
-//   WeatherParent 를 대체하는 '/' 경로 페이지
-//   - 4장의 WeatherParent 내용을 그대로 옮기되
-//   - 상세보기 버튼의 window.alert() 를 제거하고
-//     Programmatic Navigation(router.push)으로 대체
+// views/WeatherHomeView.vue
+// [변경 사항]
+//   - 데스크톱 기준 레이아웃으로 폭 확대 (940 -> 1200px)
+//   - 시간대별 예보 섹션 추가
 // ============================================
 import { ref, computed, watch, watchEffect } from 'vue'
 // [핵심] useRouter — 코드로 페이지를 이동시킬 때 사용하는 함수
@@ -15,17 +13,21 @@ import BaseDashboardCard from '@/components/exercise/BaseDashboardCard.vue'
 import SearchBar from '@/components/exercise/SearchBar.vue'
 import WeatherCard from '@/components/exercise/WeatherCard.vue'
 import SummaryPanel from '@/components/exercise/SummaryPanel.vue'
-
+import HourlyStrip from '@/components/exercise/HourlyStrip.vue'
 import ForecastStrip from '@/components/exercise/ForecastStrip.vue'
-import { weatherMockList, findForecastById, DEFAULT_CITY_ID } from '@/data/weatherMockData.js'
 
-// 데이터를 공통 모듈에서 가져온다.
-//   DetailView 도 같은 데이터를 봐야 하므로 컴포넌트 안에 두면 공유할 수 없다.
-import { weatherMockList } from '@/data/weatherMockData.js'
+import {
+  weatherMockList,
+  findForecastById,
+  findHourlyById,
+  DEFAULT_CITY_ID,
+} from '@/data/weatherMockData.js'
+import { useConfigStore } from '@/stores/configStore.js'
 
-// [핵심] useRouter() 는 <script setup> 최상단에서 한 번만 호출한다.
-//        함수 안에서 호출하면 컴포넌트 인스턴스를 찾지 못해 동작하지 않는다.
+// [핵심] useRouter() 와 use~Store() 는 <script setup> 최상단에서 호출한다.
+// 함수 호출 시점이 컴포넌트 렌더링과 관련되어 있기 때문에, 함수나 조건문 안에서 호출하면 안 된다.
 const router = useRouter()
+const configStore = useConfigStore()
 
 // --------------------------------------------
 // 반응형 상태
@@ -44,6 +46,8 @@ const today = new Date().toLocaleDateString('ko-KR', {
 
 // --------------------------------------------
 // 한글 초성 추출기
+// 완성형 한글은 0xAC00 부터 (초성×588)+(중성×28)+종성 구조이므로
+// 588 로 나눈 몫이 곧 초성의 순번이 된다.
 // --------------------------------------------
 const CHOSUNG = [
   'ㄱ',
@@ -78,6 +82,7 @@ const getChosung = (str) =>
 
 // --------------------------------------------
 // [computed] 검색 필터링
+// 일반 검색과 초성 검색 모두 startsWith 로 통일 — 매칭 규칙 일관성 유지
 // --------------------------------------------
 const filteredWeatherList = computed(() => {
   const query = searchQuery.value.trim()
@@ -89,7 +94,7 @@ const filteredWeatherList = computed(() => {
 })
 
 // --------------------------------------------
-// [computed] 오늘의 요약
+// [computed] 오늘의 요약 자동 계산
 // --------------------------------------------
 const temps = computed(() => weatherList.value.map((item) => item.temp))
 
@@ -108,6 +113,8 @@ const averageTemp = computed(() => {
   return Number((sum / temps.value.length).toFixed(1))
 })
 
+// [주의] 25도 이상 판정은 항상 섭씨 원본으로 한다.
+//        화씨로 변환한 값(82 등)을 25 와 비교하면 전부 "더움"이 된다.
 const hotCityCount = computed(() => weatherList.value.filter((item) => item.temp >= 25).length)
 
 const summaryList = computed(() => [
@@ -115,7 +122,7 @@ const summaryList = computed(() => [
     id: 'sum_01',
     icon: '🔥',
     label: '최고 기온',
-    value: `${hottestCity.value.temp}°C`,
+    value: `${configStore.convertTemp(hottestCity.value.temp)}${configStore.unitSymbol}`,
     sub: hottestCity.value.name,
     tone: 'hot',
   },
@@ -123,7 +130,7 @@ const summaryList = computed(() => [
     id: 'sum_02',
     icon: '❄️',
     label: '최저 기온',
-    value: `${coldestCity.value.temp}°C`,
+    value: `${configStore.convertTemp(coldestCity.value.temp)}${configStore.unitSymbol}`,
     sub: coldestCity.value.name,
     tone: 'cold',
   },
@@ -131,7 +138,7 @@ const summaryList = computed(() => [
     id: 'sum_03',
     icon: '📊',
     label: '평균 기온',
-    value: `${averageTemp.value}°C`,
+    value: `${configStore.convertTemp(averageTemp.value)}${configStore.unitSymbol}`,
     sub: `${weatherList.value.length}개 도시`,
     tone: 'avg',
   },
@@ -140,19 +147,24 @@ const summaryList = computed(() => [
     icon: '🌡️',
     label: '더운 도시',
     value: `${hotCityCount.value}곳`,
-    sub: '25°C 이상',
+    // 기준값도 현재 단위로 환산해 표시
+    sub: `${configStore.hotThreshold}${configStore.unitSymbol} 이상`,
     tone: 'count',
   },
 ])
 
 // --------------------------------------------
-// [computed] 선택 도시 및 날씨별 테마
+// [computed] 선택 도시 및 날씨별 헤더 테마
+// [주의] selectedCityId(ref, id 문자열)와 selectedCity(computed, 도시 객체)는 다른 변수다.
 // --------------------------------------------
 const selectedCity = computed(() =>
   weatherList.value.find((item) => item.id === selectedCityId.value),
 )
 
 const headerTheme = computed(() => {
+  // store 에서 테마 기능을 껐으면 항상 기본값
+  if (!configStore.useWeatherTheme) return 'clear'
+
   const status = selectedCity.value?.status
   if (status === '비') return 'rain'
   if (status === '흐림') return 'cloudy'
@@ -165,8 +177,7 @@ const headerTheme = computed(() => {
 //   1. 사용자가 카드를 선택했으면 그 도시
 //   2. 아니면 현재 위치 기반 도시
 //   3. 위치 조회 실패 시 기본값(서울)
-//
-// [7장] currentLocationCityId 를 navigator.geolocation 결과로 채운다.
+// [예정] currentLocationCityId 를 navigator.geolocation 결과로 채운다.
 //   navigator.geolocation.getCurrentPosition(
 //     (pos) => { /* pos.coords.latitude, longitude 로 API 호출 */ },
 //     (err) => { /* 권한 거부 시 DEFAULT_CITY_ID 유지 */ }
@@ -182,7 +193,7 @@ const forecastCity = computed(() =>
 )
 
 // [핵심] forecastCityId 가 바뀌면 예보도 자동으로 다시 조회된다.
-//        카드를 클릭하면 하단 예보가 그 도시 것으로 바뀐다.
+const hourlyList = computed(() => findHourlyById(forecastCityId.value))
 const forecastList = computed(() => findForecastById(forecastCityId.value))
 
 // --------------------------------------------
@@ -197,18 +208,7 @@ const handleSelectCard = (city) => {
   selectedCityInfo.value = `${city.name}이 선택되었습니다.`
 }
 
-// --------------------------------------------
-// Programmatic Navigation
-//
-// 4장: window.alert(...) 로 팝업을 띄웠다.
-// 5장: router.push 로 상세 페이지로 이동시킨다.
-//
-// [문법] 두 가지 표기가 모두 가능하다.
-//   router.push(`/weather/${city.id}`)                        경로 문자열
-//   router.push({ name: 'weather-detail', params: {...} })    이름 + 파라미터
-//
-// 이름 방식을 쓰면 나중에 경로 규칙이 바뀌어도 이 코드를 고칠 필요가 없다.
-// --------------------------------------------
+//  window.alert 대신 Programmatic Navigation 으로 상세 페이지 이동
 const handleClickDetail = (city) => {
   router.push({ name: 'weather-detail', params: { cityId: city.id } })
 }
@@ -237,7 +237,7 @@ watchEffect(() => {
     <header class="app-header">
       <div class="header-top">
         <div>
-          <h1>과제 4: 날씨 (Router)</h1>
+          <h1>과제 5: 날씨 (Store)</h1>
           <p class="header-date">
             {{ today }}
             <span v-if="selectedCity" class="header-city">{{ selectedCity.name }}</span>
@@ -258,14 +258,17 @@ watchEffect(() => {
     <!-- ===== 본문 ===== -->
     <div class="dashboard-body">
       <BaseDashboardCard title="지역별 날씨 현황" icon="🏙️">
-        <WeatherCard
-          v-for="item in filteredWeatherList"
-          :key="item.id"
-          :city="item"
-          :is-selected="item.id === selectedCityId"
-          @select-card="handleSelectCard"
-          @click-detail="handleClickDetail"
-        />
+        <!-- 화면이 넓어지면 카드가 2열, 3열로 자동 배치된다 -->
+        <div class="card-grid">
+          <WeatherCard
+            v-for="item in filteredWeatherList"
+            :key="item.id"
+            :city="item"
+            :is-selected="item.id === selectedCityId"
+            @select-card="handleSelectCard"
+            @click-detail="handleClickDetail"
+          />
+        </div>
 
         <p v-if="filteredWeatherList.length === 0" class="empty-message">
           검색 결과와 일치하는 도시가 없습니다.
@@ -276,7 +279,16 @@ watchEffect(() => {
         <SummaryPanel :items="summaryList" />
       </BaseDashboardCard>
 
-      <!-- 5일 예보 — 좌우 컬럼을 가로질러 전체 폭 사용 -->
+      <!-- 시간대별 예보 — 좌우 컬럼을 가로질러 전체 폭 사용 -->
+      <BaseDashboardCard
+        :title="`시간대별 예보 (${forecastCity?.name ?? '—'})`"
+        icon="🕐"
+        class="full-width"
+      >
+        <HourlyStrip :items="hourlyList" />
+      </BaseDashboardCard>
+
+      <!-- 5일 예보 -->
       <BaseDashboardCard
         :title="`5일 예보 (${forecastCity?.name ?? '—'})`"
         icon="📅"
@@ -284,13 +296,13 @@ watchEffect(() => {
       >
         <ForecastStrip :items="forecastList" />
 
-        <!-- 선택 전에는 어느 기준인지 안내 -->
         <p v-if="!selectedCityId" class="forecast-hint">
           현재 위치 기준입니다. 도시 카드를 선택하면 해당 지역 예보로 바뀝니다.
         </p>
       </BaseDashboardCard>
     </div>
 
+    <!-- 하단 상태바 -->
     <div class="status-bar">
       <span class="status-dot"></span>
       {{ selectedCityInfo }}
@@ -299,9 +311,12 @@ watchEffect(() => {
 </template>
 
 <style scoped>
+/* [레이아웃] 데스크톱 기준 1200px */
 .dashboard-wrapper {
-  max-width: 940px;
-  margin: 0 auto;
+  /* 반응형 폭 — vw 는 스크롤바 폭까지 포함해 가로 스크롤을 만들 수 있으므로
+     min() + % 조합을 사용한다. 넓은 화면에서는 1400px 에서 멈춘다. */
+  width: min(1400px, 100%);
+  margin-inline: auto;
   border-radius: 20px;
   overflow: hidden;
   color: #253858;
@@ -316,9 +331,9 @@ watchEffect(() => {
   background: linear-gradient(
     180deg,
     var(--sky-top) 0px,
-    var(--sky-mid) 180px,
-    var(--sky-bottom) 340px,
-    var(--body-bg) 460px
+    var(--sky-mid) 170px,
+    var(--sky-bottom) 300px,
+    var(--body-bg) 400px
   );
   transition: background 0.6s ease;
 }
@@ -352,15 +367,16 @@ watchEffect(() => {
   --accent: #3d5f8f;
 }
 
+/* ===== 헤더 ===== */
 .app-header {
-  padding: 30px 34px 28px;
+  padding: 28px 30px 24px;
   color: #fff;
 }
 .header-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 .app-header h1 {
   margin: 0;
@@ -388,13 +404,24 @@ watchEffect(() => {
   backdrop-filter: blur(6px);
 }
 
+/* ===== 본문 그리드 ===== */
+/* [레이아웃] 폭이 넓어졌으므로 사이드 컬럼도 함께 확대 */
 .dashboard-body {
   display: grid;
-  grid-template-columns: 1fr 268px;
+  grid-template-columns: 1fr 320px;
   gap: 18px;
   padding: 20px;
 }
 
+/* 카드 목록 — 폭에 따라 열 수가 자동으로 늘어난다.
+   카드 하나가 360px 아래로 줄어들 것 같으면 열을 줄인다. */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 12px;
+}
+
+/* 전체 폭을 쓰는 패널 */
 .full-width {
   grid-column: 1 / -1;
 }
@@ -406,11 +433,12 @@ watchEffect(() => {
   text-align: center;
 }
 
+/* ===== 하단 상태바 ===== */
 .status-bar {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 15px 34px;
+  padding: 15px 30px;
   font-size: 13px;
   font-weight: 500;
   color: var(--accent);
@@ -425,6 +453,7 @@ watchEffect(() => {
   transition: background 0.6s ease;
 }
 
+/* ===== 검색 결과 없음 ===== */
 .empty-message {
   margin: 0;
   padding: 34px 0;
@@ -436,7 +465,8 @@ watchEffect(() => {
   border-radius: 14px;
 }
 
-@media (max-width: 780px) {
+/* ===== 반응형 ===== */
+@media (max-width: 900px) {
   .dashboard-body {
     grid-template-columns: 1fr;
   }

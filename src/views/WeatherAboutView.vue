@@ -1,9 +1,7 @@
 <script setup>
 // ============================================
 // 5장 Hands on : views/WeatherAboutView.vue
-//
-// [요구사항 5] 서비스 소개용 정적 페이지 + 메인 대시보드로 돌아가기
-//
+// 서비스 소개용 정적 페이지 + 메인 대시보드로 돌아가기
 // [핵심] 반응형 상태가 전혀 없는 정적 페이지도 하나의 라우트가 된다.
 //        Lazy Loading 덕분에 사용자가 이 메뉴를 누르기 전까지는
 //        이 파일이 다운로드되지 않는다.
@@ -13,8 +11,8 @@
 const techStack = [
   { id: 't1', icon: '⚡', name: 'Vue 3', desc: 'Composition API 기반 프론트엔드 프레임워크' },
   { id: 't2', icon: '🧭', name: 'Vue Router', desc: 'SPA 페이지 전환 및 동적 경로 매칭' },
-  { id: 't3', icon: '🍍', name: 'Pinia', desc: '전역 상태 관리 (6장 적용 예정)' },
-  { id: 't4', icon: '🔌', name: 'Axios', desc: 'OpenWeather API 연동 (7장 적용 예정)' },
+  { id: 't3', icon: '🍍', name: 'Pinia', desc: '전역 상태 관리 ' },
+  { id: 't4', icon: '🔌', name: 'Axios', desc: 'OpenWeather API 연동 ' },
   { id: 't5', icon: '🛠️', name: 'Vite', desc: '개발 서버 및 번들링' },
 ]
 
@@ -73,7 +71,7 @@ const features = [
       </ul>
     </section>
 
-    <!-- [요구사항 5] 메인 대시보드로 돌아가기 -->
+    <!-- 메인 대시보드로 돌아가기 -->
     <!-- [핵심] <a href="/"> 를 쓰면 새로고침되어 앱이 처음부터 다시 로드된다.
          반드시 <RouterLink> 를 사용할 것. -->
     <RouterLink to="/" class="link-home">← 메인 대시보드로 돌아가기</RouterLink>
@@ -82,8 +80,8 @@ const features = [
 
 <style scoped>
 .about-wrapper {
-  max-width: 940px;
-  margin: 0 auto;
+  width: min(1400px, 100%);
+  margin-inline: auto;
   padding: 0 0 40px;
   color: #253858;
 }

@@ -21,9 +21,9 @@ npm run dev      # http://localhost:5173
 | ---------------------- | ------------------- | ------- |
 | 2. Vue Syntax          | Weather Mockup      | ✅ 완료 |
 | 3. Composition API     | Weather Composition | ✅ 완료 |
-| 4. Vue Components      | Weather Component   | 예정    |
-| 5. Vue Router          | Weather Router      | 예정    |
-| 6. Pinia               | Weather Store       | 예정    |
+| 4. Vue Components      | Weather Component   | ✅ 완료 |
+| 5. Vue Router          | Weather Router      | ✅ 완료 |
+| 6. Pinia               | Weather Store       | ✅ 완료 |
 | 7. Axios               | Weather Axios       | 예정    |
 | 8. UI Library          | Weather UI Library  | 예정    |
 | 9. Modern JavaScript   | Weather Refinement  | 예정    |

@@ -1,9 +1,7 @@
 <script setup>
 // ============================================
 // 5장 Hands on : views/NotFoundView.vue
-//
-// [요구사항 1] Catch-all Route 로 연결되는 404 페이지
-//
+// Catch-all Route 로 연결되는 404 페이지
 // [핵심] router/index.js 의 '/:pathMatch(.*)*' 규칙이
 //        정의되지 않은 모든 경로를 이 컴포넌트로 보낸다.
 //        예) /abcd, /weather, /some/deep/path
@@ -41,8 +39,8 @@ const goBack = () => {
 
 <style scoped>
 .notfound-wrapper {
-  max-width: 940px;
-  margin: 0 auto;
+  width: min(1400px, 100%);
+  margin-inline: auto;
   padding: 90px 20px;
   text-align: center;
   color: #253858;
