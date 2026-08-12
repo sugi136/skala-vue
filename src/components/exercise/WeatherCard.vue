@@ -1,40 +1,66 @@
 <script setup>
 // ============================================
-// 4장 Hands on : WeatherCard.vue
-//
-// [역할] 도시 하나의 날씨를 표시하는 카드
-//
-// [핵심] 카드는 "표시"와 "알림"만 담당한다.
-//        어떤 도시가 선택됐는지, 상세보기를 누르면 무슨 일이 벌어지는지는
-//        전부 부모가 결정한다. -> 재사용 가능한 컴포넌트가 된다.
+// 6장 : WeatherCard.vue
+// 단위 설정 변경을 카드에 적용
+// 즐겨찾기 store 를 활용한 별 아이콘 추가
+// [핵심] 4장에서는 props 만 받는 순수한 표시 컴포넌트였다.
+//        이제 store 를 직접 구독하므로 부모가 단위를 내려줄 필요가 없다.
 // ============================================
+import { computed } from 'vue'
+import { useConfigStore } from '@/stores/configStore.js'
+import { useFavoriteStore } from '@/stores/favoriteStore.js'
+import { hasAlert } from '@/data/weatherMockData.js'
 
-// --------------------------------------------
-// [Props] 부모 -> 자식
-// --------------------------------------------
-defineProps({
-  // 도시 객체 하나 { id, name, temp, status, icon }
+const props = defineProps({
   city: {
     type: Object,
     required: true,
   },
-  // 이 카드가 현재 선택된 상태인지 여부
   isSelected: {
     type: Boolean,
     default: false,
   },
 })
 
-// --------------------------------------------
-// [Emits] 자식 -> 부모
-//   select-card  : 카드 전체 클릭
-//   click-detail : 상세보기 버튼 클릭
-// --------------------------------------------
 const emit = defineEmits(['select-card', 'click-detail'])
+
+const configStore = useConfigStore()
+const favoriteStore = useFavoriteStore()
+
+// --------------------------------------------
+// 단위 변환
+// [주의] script 안에서는 props.city 로 접근한다 (template 에서는 city 로 바로).
+// [핵심] configStore.unit 이 바뀌면 이 computed 가 자동 재계산되어
+//        화면의 모든 카드 온도가 한꺼번에 바뀐다.
+// [설계] 변환 공식을 여기 직접 쓰지 않고 store 의 convertTemp 를 호출한다.
+//        메인·상세·요약에서 같은 코드가 중복되는 것을 피하기 위함.
+//        (과제 참고사항의 "Composable 로 해결 가능" 부분을 store 로 대체)
+// --------------------------------------------
+const displayTemp = computed(() => configStore.convertTemp(props.city.temp))
+
+// 더움/선선함 판정은 항상 섭씨 원본으로 한다.
+// [주의] 화씨로 변환된 값(82 등)으로 25 와 비교하면 전부 "더움"이 되어버린다.
+const isHot = computed(() => props.city.temp >= 25)
+
+// --------------------------------------------
+// 즐겨찾기 여부
+// getter 가 인자를 받는 형태이므로 함수처럼 호출한다.
+// --------------------------------------------
+const isFavorite = computed(() => favoriteStore.isFavorite(props.city.id))
+
+// 기상특보 발효 여부 — 카드에는 배지만 표시하고
+// 자세한 내용은 상세 페이지에서 확인하도록 한다
+const hasWeatherAlert = computed(() => hasAlert(props.city.id))
+
+// 별 클릭 — store 의 action 을 직접 호출
+// [핵심] 부모에게 emit 하지 않는다. 전역 상태이므로 어느 컴포넌트에서 바꾸든
+//        같은 store 를 보는 모든 화면이 함께 갱신된다.
+const handleToggleFavorite = () => {
+  favoriteStore.toggleFavorite(props.city.id)
+}
 </script>
 
 <template>
-  <!-- [핵심] :class 객체 바인딩 — 부모가 내려준 isSelected 로 강조 여부 결정 -->
   <div
     class="weather-card"
     :class="{ 'is-selected': isSelected }"
@@ -45,29 +71,44 @@ const emit = defineEmits(['select-card', 'click-detail'])
     <div class="card-main">
       <h4 class="card-name">
         {{ city.name }} <span class="card-status">({{ city.status }})</span>
+        <!-- 특보가 발효 중일 때만 배지를 붙인다 -->
+        <span v-if="hasWeatherAlert" class="alert-badge" title="기상특보 발효 중">⚠️ 특보</span>
       </h4>
       <p class="card-temp">
-        현재 기온: <strong>{{ city.temp }}°C</strong>
+        <!-- 변환된 온도 + store 의 단위 기호 -->
+        현재 기온: <strong>{{ displayTemp }}{{ configStore.unitSymbol }}</strong>
       </p>
 
-      <!-- [2장 문법 유지] v-if / v-else — 기온에 따라 다른 배지 -->
-      <span v-if="city.temp >= 25" class="badge hot">🔥 더움 (25도 이상)</span>
-      <span v-else class="badge cool">❄️ 선선함 (25도 미만)</span>
+      <!-- [Customization] 배지 문구도 단위에 따라 바뀐다.
+           섭씨 25도 이상 -> 화씨로 전환하면 "77℉ 이상"으로 표시.
+           판정 자체는 아래 isHot(섭씨 원본 기준)이 담당한다. -->
+      <span v-if="isHot" class="badge hot">🔥 {{ configStore.hotLabel }}</span>
+      <span v-else class="badge cool">❄️ {{ configStore.coolLabel }}</span>
     </div>
 
-    <!-- [핵심] @click.stop — 부모 카드의 select-card 까지 함께 발생하는 것을 차단 -->
-    <button class="btn-detail" @click.stop="emit('click-detail', city)">상세보기</button>
+    <div class="card-actions">
+      <!-- 즐겨찾기 별 아이콘
+           [핵심] @click.stop 으로 카드 선택 이벤트가 함께 발생하는 것을 막는다 -->
+      <button
+        class="btn-star"
+        :class="{ active: isFavorite }"
+        :title="isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'"
+        @click.stop="handleToggleFavorite"
+      >
+        {{ isFavorite ? '★' : '☆' }}
+      </button>
+
+      <button class="btn-detail" @click.stop="emit('click-detail', city)">상세보기</button>
+    </div>
   </div>
 </template>
 
 <style scoped>
-/* [요구사항 5] WeatherCard 에 해당하는 디자인만 여기에 격리 */
 .weather-card {
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 16px 18px;
-  margin-bottom: 12px;
   background: #fbfcff;
   border: 1px solid #e6edf9;
   border-radius: 14px;
@@ -76,10 +117,6 @@ const emit = defineEmits(['select-card', 'click-detail'])
     transform 0.18s ease,
     box-shadow 0.18s ease,
     border-color 0.18s ease;
-}
-
-.weather-card:last-child {
-  margin-bottom: 0;
 }
 
 .weather-card:hover {
@@ -108,6 +145,18 @@ const emit = defineEmits(['select-card', 'click-detail'])
   margin: 0;
   font-size: 17px;
   font-weight: 700;
+}
+
+.alert-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #a8500f;
+  background: #ffeedb;
+  vertical-align: middle;
 }
 
 .card-status {
@@ -146,8 +195,40 @@ const emit = defineEmits(['select-card', 'click-detail'])
   color: #3a7ad4;
 }
 
-.btn-detail {
+/* ===== 우측 버튼 영역 ===== */
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
+}
+
+.btn-star {
+  width: 34px;
+  height: 34px;
+  font-size: 19px;
+  line-height: 1;
+  color: #c3ccda;
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.btn-star:hover {
+  background: #f2f6fd;
+  transform: scale(1.15);
+}
+
+.btn-star.active {
+  color: #f5b731;
+}
+
+.btn-detail {
   padding: 9px 16px;
   font-size: 13px;
   font-weight: 600;

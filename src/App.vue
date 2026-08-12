@@ -1,15 +1,14 @@
 <script setup>
 // ============================================
-// 5장 Hands on : App.vue
-//
-// [요구사항 2] Navigation Bar(RouterLink) 추가 및 메인 콘텐츠 영역(RouterView) 배치
-//
-// [핵심] App.vue 는 이제 "화면"이 아니라 "레이아웃 틀"이 된다.
-//        상단 내비게이션은 고정되고, 그 아래 <RouterView> 자리만 갈아 끼워진다.
+// App.vue (전체)
+// Navigation Bar 옆에 단위 설정 UI 배치
+// [핵심] App.vue 는 "화면"이 아니라 "레이아웃 틀"이다.
+//        상단 내비게이션은 고정되고, <RouterView> 자리만 갈아 끼워진다.
 // ============================================
 
-// [참고] RouterLink, RouterView 는 main.js 에서 app.use(router) 로 등록되어
-//        전역 컴포넌트가 되므로 import 가 필요 없다.
+// [참고] RouterLink, RouterView 는 main.js 의 app.use(router) 로 전역 등록되므로
+//        import 가 필요 없다.
+import UnitToggler from '@/components/exercise/UnitToggler.vue'
 </script>
 
 <template>
@@ -21,16 +20,19 @@
         <span class="brand-text">Weather Dashboard</span>
       </div>
 
-      <div class="nav-links">
+      <div class="nav-right">
         <!-- [핵심] <a href> 를 쓰면 브라우저가 강제 새로고침되어
-             메모리의 모든 반응형 상태(ref, computed)가 초기화된다.
-             반드시 <RouterLink> 를 사용할 것.
+             메모리의 모든 반응형 상태(ref, computed, store)가 초기화된다.
+             반드시 <RouterLink> 를 사용할 것. -->
+        <div class="nav-links">
+          <RouterLink to="/">대시보드</RouterLink>
+          <RouterLink to="/favorites">즐겨찾기</RouterLink>
+          <RouterLink to="/about">서비스 소개</RouterLink>
+        </div>
 
-             [문법] to 에 문자열 경로 또는 { name: '라우트이름' } 객체를 넘길 수 있다.
-             이름으로 지정하면 나중에 경로가 바뀌어도 수정할 필요가 없다. -->
-        <RouterLink to="/">대시보드</RouterLink>
-        <RouterLink to="/favorites">즐겨찾기</RouterLink>
-        <RouterLink to="/about">서비스 소개</RouterLink>
+        <!-- 단위 설정 UI
+             props 를 전혀 받지 않는다. store 에서 직접 읽고 직접 바꾼다. -->
+        <UnitToggler />
       </div>
     </nav>
 
@@ -46,18 +48,19 @@
 <style scoped>
 .app-shell {
   min-height: 100vh;
-  background: #f4f7fe;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
 }
 
 /* ===== Navigation Bar ===== */
+/* [레이아웃] 본문(1200px)과 좌우 정렬을 맞춘다 */
 .nav-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 940px;
-  margin: 0 auto;
-  padding: 18px 8px;
+  /* 본문과 좌우 정렬을 맞춘다 */
+  width: min(1400px, 100%);
+  margin-inline: auto;
+  padding: 18px 20px;
 }
 
 .nav-brand {
@@ -71,6 +74,13 @@
 
 .brand-icon {
   font-size: 20px;
+}
+
+/* 우측 영역 — 메뉴 + 단위 토글 */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .nav-links {
@@ -97,9 +107,7 @@
 
 /* [핵심] router-link-active / router-link-exact-active 는
    Vue Router 가 현재 경로와 일치하는 링크에 자동으로 붙여주는 클래스다.
-   별도 로직 없이 CSS 만으로 현재 메뉴를 강조할 수 있다.
-   - active       : 경로가 "포함"되면 붙음 (/weather/city_01 에서도 / 링크에 붙음)
-   - exact-active : 경로가 완전히 일치할 때만 붙음 */
+   별도 로직 없이 CSS 만으로 현재 메뉴를 강조할 수 있다. */
 .nav-links a.router-link-exact-active {
   background: #5b9bf8;
   color: #fff;
@@ -107,14 +115,18 @@
 
 /* ===== 메인 영역 ===== */
 .app-main {
-  padding: 0 8px 40px;
+  padding: 0 20px 40px;
 }
 
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   .nav-bar {
     flex-direction: column;
     gap: 12px;
     padding: 14px 8px;
+  }
+  .nav-right {
+    flex-direction: column;
+    gap: 10px;
   }
   .nav-links a {
     padding: 7px 11px;
