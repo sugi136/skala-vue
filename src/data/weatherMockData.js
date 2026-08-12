@@ -94,3 +94,71 @@ export const weatherMockDetail = {
 export const findCityById = (cityId) => weatherMockList.find((item) => item.id === cityId)
 
 export const findDetailById = (cityId) => weatherMockDetail[cityId] ?? null
+
+// --------------------------------------------
+// 5일 예보 Mock Data
+//
+// [7장] OpenWeather 무료 티어의 /data/2.5/forecast 로 대체할 예정
+//   - 최대 5일, 3시간 간격 40개 배열로 응답
+//   - 날짜별로 묶어 최고/최저를 뽑는 가공이 필요 (9장 reduce / filter 활용)
+//   - 좌표 기반 조회: ?lat={위도}&lon={경도}
+//
+// [설계] 도시마다 25개 항목을 손으로 적는 대신 생성 함수 사용
+//        7장에서 실제 데이터로 교체 예정
+// --------------------------------------------
+
+// 요일 라벨을 오늘 기준으로 만든다
+const WEEKDAY_LABEL = ['일', '월', '화', '수', '목', '금', '토']
+
+// [주의] Math.random() 을 쓰면 렌더링될 때마다 값이 바뀐다.
+//        index 기반의 고정된 패턴으로 만들어 항상 같은 결과가 나오게 한다.
+const TEMP_OFFSET = [0, 1, -2, -1, -3] // 오늘부터 5일간의 기온 변화 폭
+const ICON_PATTERN = ['☀️', '☀️', '🌧️', '⛅', '☁️']
+
+/**
+ * 도시 하나의 5일 예보를 생성한다.
+ * @param {object} city - { id, name, temp, icon }
+ * @returns {Array} 5일치 예보 배열
+ */
+const createForecast = (city) => {
+  const today = new Date()
+
+  // Array.from 으로 길이 5인 배열을 만들며 각 요소를 생성
+  return Array.from({ length: 5 }, (_, index) => {
+    // 오늘 날짜에 index 일을 더한다
+    const date = new Date(today)
+    date.setDate(today.getDate() + index)
+
+    // 기온: 도시의 현재 기온을 기준으로 고정된 오프셋을 적용
+    const high = city.temp + TEMP_OFFSET[index]
+    const low = high - 8
+
+    return {
+      id: `${city.id}_f${index + 1}`,
+      // 오늘만 '오늘'로 표시하고 나머지는 요일
+      day: index === 0 ? '오늘' : WEEKDAY_LABEL[date.getDay()],
+      // [문법] padStart(2, '0') — 한 자리 숫자 앞에 0을 채워 08/12 형태로
+      date: `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`,
+      icon: ICON_PATTERN[index],
+      high,
+      low,
+    }
+  })
+}
+
+// reduce 로 { city_01: [...], city_02: [...] } 형태의 객체를 조립
+export const weatherMockForecast = weatherMockList.reduce((acc, city) => {
+  acc[city.id] = createForecast(city)
+  return acc
+}, {})
+
+// 도시 id 로 예보 배열을 조회, 없으면 빈 배열
+export const findForecastById = (cityId) => weatherMockForecast[cityId] ?? []
+
+// --------------------------------------------
+// [7장 대비] 기본 도시 id
+//   현재 위치 좌표 조회가 실패하거나 사용자가 권한을 거부했을 때 사용
+//   navigator.geolocation 은 HTTPS(또는 localhost)에서만 동작하고,
+//   사용자가 거부할 수 있으므로 폴백이 반드시 필요
+// --------------------------------------------
+export const DEFAULT_CITY_ID = 'city_01' // 서울

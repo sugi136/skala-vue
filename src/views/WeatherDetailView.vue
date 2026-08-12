@@ -15,8 +15,13 @@ import { useRoute, useRouter } from 'vue-router'
 import BaseDashboardCard from '@/components/exercise/BaseDashboardCard.vue'
 import { findCityById, findDetailById } from '@/data/weatherMockData.js'
 
+import ForecastStrip from '@/components/exercise/ForecastStrip.vue'
+import { findCityById, findDetailById, findForecastById } from '@/data/weatherMockData.js'
+
 const route = useRoute()
 const router = useRouter()
+
+const forecast = ref([])
 
 // --------------------------------------------
 // [핵심] 동적 경로 파라미터 수신
@@ -39,6 +44,7 @@ const isLoading = ref(true)
 onMounted(() => {
   city.value = findCityById(cityId)
   detail.value = findDetailById(cityId)
+  forecast.value = findForecastById(cityId) // ← 추가
   isLoading.value = false
 
   console.log(`[onMounted] cityId='${cityId}' 로 상세 데이터 조회`)
@@ -85,8 +91,6 @@ const goBack = () => {
 
 <template>
   <div class="detail-wrapper">
-    <!-- [핵심] v-if / v-else-if / v-else 3단 분기
-         로딩 중 / 데이터 있음 / 잘못된 도시 ID -->
     <p v-if="isLoading" class="state-message">불러오는 중...</p>
 
     <template v-else-if="city">
@@ -104,8 +108,6 @@ const goBack = () => {
       </header>
 
       <!-- ===== 상세 관측 정보 ===== -->
-      <!-- [4장 재사용] BaseDashboardCard 는 날씨를 모르는 껍데기이므로
-           상세 페이지에서도 그대로 쓸 수 있다. 컴포넌트 분리의 효과. -->
       <BaseDashboardCard title="상세 기상관측 정보" icon="📡">
         <div class="detail-grid">
           <div v-for="item in detailItems" :key="item.id" class="detail-item">
@@ -117,7 +119,11 @@ const goBack = () => {
         </div>
       </BaseDashboardCard>
 
-      <!-- [핵심] 코드 이동(router.push)이 아닌 링크 이동은 RouterLink 사용 -->
+      <!-- 5일 예보 -->
+      <BaseDashboardCard title="5일 예보" icon="📅" class="forecast-panel">
+        <ForecastStrip :items="forecast" />
+      </BaseDashboardCard>
+
       <RouterLink to="/" class="link-home">대시보드로 돌아가기</RouterLink>
     </template>
 
@@ -197,6 +203,10 @@ const goBack = () => {
   background: #fbfcff;
   border: 1px solid #e6edf9;
   border-radius: 13px;
+}
+
+.forecast-panel {
+  margin-top: 18px;
 }
 
 .item-icon {

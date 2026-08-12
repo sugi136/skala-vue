@@ -2,7 +2,7 @@
 // ============================================
 // 5장 Hands on : views/WeatherHomeView.vue
 //
-// [요구사항 3] WeatherParent 를 대체하는 '/' 경로 페이지
+//   WeatherParent 를 대체하는 '/' 경로 페이지
 //   - 4장의 WeatherParent 내용을 그대로 옮기되
 //   - 상세보기 버튼의 window.alert() 를 제거하고
 //     Programmatic Navigation(router.push)으로 대체
@@ -16,7 +16,10 @@ import SearchBar from '@/components/exercise/SearchBar.vue'
 import WeatherCard from '@/components/exercise/WeatherCard.vue'
 import SummaryPanel from '@/components/exercise/SummaryPanel.vue'
 
-// [5장 변화] 데이터를 공통 모듈에서 가져온다.
+import ForecastStrip from '@/components/exercise/ForecastStrip.vue'
+import { weatherMockList, findForecastById, DEFAULT_CITY_ID } from '@/data/weatherMockData.js'
+
+// 데이터를 공통 모듈에서 가져온다.
 //   DetailView 도 같은 데이터를 봐야 하므로 컴포넌트 안에 두면 공유할 수 없다.
 import { weatherMockList } from '@/data/weatherMockData.js'
 
@@ -25,7 +28,7 @@ import { weatherMockList } from '@/data/weatherMockData.js'
 const router = useRouter()
 
 // --------------------------------------------
-// 반응형 상태 (4장에서 유지)
+// 반응형 상태
 // --------------------------------------------
 const weatherList = ref(weatherMockList)
 const searchQuery = ref('')
@@ -40,7 +43,7 @@ const today = new Date().toLocaleDateString('ko-KR', {
 })
 
 // --------------------------------------------
-// 한글 초성 추출기 (3장에서 유지)
+// 한글 초성 추출기
 // --------------------------------------------
 const CHOSUNG = [
   'ㄱ',
@@ -74,7 +77,7 @@ const getChosung = (str) =>
     .join('')
 
 // --------------------------------------------
-// [computed] 검색 필터링 (3장에서 유지)
+// [computed] 검색 필터링
 // --------------------------------------------
 const filteredWeatherList = computed(() => {
   const query = searchQuery.value.trim()
@@ -86,7 +89,7 @@ const filteredWeatherList = computed(() => {
 })
 
 // --------------------------------------------
-// [computed] 오늘의 요약 (3장에서 유지)
+// [computed] 오늘의 요약
 // --------------------------------------------
 const temps = computed(() => weatherList.value.map((item) => item.temp))
 
@@ -143,7 +146,7 @@ const summaryList = computed(() => [
 ])
 
 // --------------------------------------------
-// [computed] 선택 도시 및 날씨별 테마 (3장에서 유지)
+// [computed] 선택 도시 및 날씨별 테마
 // --------------------------------------------
 const selectedCity = computed(() =>
   weatherList.value.find((item) => item.id === selectedCityId.value),
@@ -158,7 +161,32 @@ const headerTheme = computed(() => {
 })
 
 // --------------------------------------------
-// 자식 컴포넌트의 emit 수신 핸들러 (4장에서 유지)
+// [예보 기준 도시] 우선순위
+//   1. 사용자가 카드를 선택했으면 그 도시
+//   2. 아니면 현재 위치 기반 도시
+//   3. 위치 조회 실패 시 기본값(서울)
+//
+// [7장] currentLocationCityId 를 navigator.geolocation 결과로 채운다.
+//   navigator.geolocation.getCurrentPosition(
+//     (pos) => { /* pos.coords.latitude, longitude 로 API 호출 */ },
+//     (err) => { /* 권한 거부 시 DEFAULT_CITY_ID 유지 */ }
+//   )
+//   지금은 API 미연동 상태이므로 기본값(서울)을 그대로 사용한다.
+// --------------------------------------------
+const currentLocationCityId = ref(DEFAULT_CITY_ID)
+
+const forecastCityId = computed(() => selectedCityId.value ?? currentLocationCityId.value)
+
+const forecastCity = computed(() =>
+  weatherList.value.find((item) => item.id === forecastCityId.value),
+)
+
+// [핵심] forecastCityId 가 바뀌면 예보도 자동으로 다시 조회된다.
+//        카드를 클릭하면 하단 예보가 그 도시 것으로 바뀐다.
+const forecastList = computed(() => findForecastById(forecastCityId.value))
+
+// --------------------------------------------
+// 자식 컴포넌트의 emit 수신 핸들러
 // --------------------------------------------
 const handleUpdateQuery = (newQuery) => {
   searchQuery.value = newQuery
@@ -170,7 +198,7 @@ const handleSelectCard = (city) => {
 }
 
 // --------------------------------------------
-// [요구사항 3 / 5장 핵심] Programmatic Navigation
+// Programmatic Navigation
 //
 // 4장: window.alert(...) 로 팝업을 띄웠다.
 // 5장: router.push 로 상세 페이지로 이동시킨다.
@@ -186,7 +214,7 @@ const handleClickDetail = (city) => {
 }
 
 // --------------------------------------------
-// [watch / watchEffect] 3장에서 유지
+// [watch / watchEffect]
 // --------------------------------------------
 watch(selectedCityInfo, (newInfo, oldInfo) => {
   console.log(`[watch] 상태바 변경: "${oldInfo}" -> "${newInfo}"`)
@@ -246,6 +274,20 @@ watchEffect(() => {
 
       <BaseDashboardCard title="오늘의 요약" icon="📋">
         <SummaryPanel :items="summaryList" />
+      </BaseDashboardCard>
+
+      <!-- 5일 예보 — 좌우 컬럼을 가로질러 전체 폭 사용 -->
+      <BaseDashboardCard
+        :title="`5일 예보 (${forecastCity?.name ?? '—'})`"
+        icon="📅"
+        class="full-width"
+      >
+        <ForecastStrip :items="forecastList" />
+
+        <!-- 선택 전에는 어느 기준인지 안내 -->
+        <p v-if="!selectedCityId" class="forecast-hint">
+          현재 위치 기준입니다. 도시 카드를 선택하면 해당 지역 예보로 바뀝니다.
+        </p>
       </BaseDashboardCard>
     </div>
 
@@ -351,6 +393,17 @@ watchEffect(() => {
   grid-template-columns: 1fr 268px;
   gap: 18px;
   padding: 20px;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.forecast-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #9aa8bd;
+  text-align: center;
 }
 
 .status-bar {
