@@ -1,47 +1,77 @@
 <script setup>
 // ============================================
-// 6장 : views/FavoriteView.vue
-// [참고]
-//   5장: favoriteIds 가 이 컴포넌트의 지역 상태였다.
-//        -> 대시보드에서 별을 눌러도 여기에 반영되지 않고,
-//           페이지를 벗어나면 목록이 초기화되었다.
-//   6장: favoriteStore 로 옮겨 앱 전체가 같은 목록을 공유한다.
-//        -> "왜 Pinia 가 필요한가"를 보여주는 사례
-// [참고] Query String, router.replace, useRoute/useRouter
+// views/FavoriteView.vue
+//
+// [변경] weatherStore 연동
+//   즐겨찾기는 id·이름만 저장하므로 실시간 날씨는 store 에서 가져온다.
+//   새로고침 직후 검색으로 추가했던 도시는 목록에 없으므로 다시 조회한다.
 // ============================================
-import { computed, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 
 import BaseDashboardCard from '@/components/exercise/BaseDashboardCard.vue'
 import WeatherCard from '@/components/exercise/WeatherCard.vue'
-import { weatherMockList } from '@/data/weatherMockData.js'
 import { useFavoriteStore } from '@/stores/favoriteStore.js'
+import { useWeatherStore } from '@/stores/weatherStore.js'
 
 const route = useRoute()
 const router = useRouter()
-
-// --------------------------------------------
-// [핵심] 즐겨찾기 store 연결
-// [주의] state 를 그냥 구조분해하면 반응성이 끊긴다.
-//   const { favoriteIds } = favoriteStore   ← 배열 값만 복사되어 갱신 안 됨
-//   반드시 storeToRefs 로 감쌀 것.
-// --------------------------------------------
 const favoriteStore = useFavoriteStore()
+const weatherStore = useWeatherStore()
 
-// state / getters -> storeToRefs
-const { favoriteIds, favoriteCount } = storeToRefs(favoriteStore)
+// [핵심] state 와 getters 는 storeToRefs 로 꺼내야 반응성이 유지된다.
+const { favorites, favoriteCount } = storeToRefs(favoriteStore)
+const { cities } = storeToRefs(weatherStore)
 
-// actions(함수) -> 반응성과 무관하므로 그냥 구조분해해도 된다
-const { removeFavorite, clearAll } = favoriteStore
+// actions(함수)는 반응성과 무관하므로 그냥 구조분해해도 된다
+const { clearAll } = favoriteStore
+
+const isLoading = ref(false)
+const missingCities = ref([])
 
 // --------------------------------------------
-// [유지] Query String 으로 정렬 상태 관리
+// 즐겨찾기한 도시의 실시간 날씨를 확보한다.
+//
+// [배경] 즐겨찾기는 { id, enName, name } 만 localStorage 에 저장한다.
+//        기온·아이콘 같은 실시간 값은 금방 낡으므로 저장하지 않는다.
+//        따라서 이 페이지에 들어올 때마다 store 에서 최신 값을 가져와야 한다.
+//
+// [핵심] ensureDetail 은 캐시를 먼저 확인하므로,
+//        기본 17개 지역은 이미 받아둔 데이터를 그대로 쓴다.
+//        검색으로 추가했다가 새로고침으로 사라진 도시만 실제로 호출된다.
+// --------------------------------------------
+onMounted(async () => {
+  // 기본 목록이 아직 없으면 먼저 불러온다 (URL 로 직접 접근한 경우)
+  await weatherStore.loadCities()
+
+  if (favorites.value.length === 0) return
+
+  isLoading.value = true
+  missingCities.value = []
+
+  // [문법] map 으로 Promise 배열을 만들고 allSettled 로 병렬 실행.
+  //        일부가 실패해도 나머지는 표시되도록 한다.
+  const results = await Promise.allSettled(
+    favorites.value.map((fav) => weatherStore.ensureDetail(fav.id)),
+  )
+
+  results.forEach((result, index) => {
+    if (result.status === 'rejected') {
+      missingCities.value.push(favorites.value[index].name)
+    }
+  })
+
+  isLoading.value = false
+})
+
+// --------------------------------------------
+// Query String 으로 정렬 상태 관리
 //   /favorites?sort=temp 로 접근하면 route.query.sort 는 'temp'
 //   [문법] ?? — 값이 없을 때만 기본값 사용 (nullish 병합)
-// [변경] 5장에서는 ref 로 따로 관리했으나,
-//        URL 이 유일한 진실 공급원이 되도록 computed 로 바꿨다.
-//        뒤로가기로 URL 이 바뀌어도 화면이 따라온다.
+//
+//   URL 이 유일한 진실 공급원이 되도록 computed 로 만들었다.
+//   뒤로가기로 주소가 바뀌어도 화면이 따라온다.
 // --------------------------------------------
 const sortKey = computed(() => route.query.sort ?? 'name')
 
@@ -53,13 +83,15 @@ const changeSort = (key) => {
 }
 
 // --------------------------------------------
-// [computed] 즐겨찾기 필터링 + 정렬
-//   favoriteIds 가 store 값이므로, 대시보드에서 별을 누르면
-//   이 목록도 자동으로 다시 계산된다.
+// [computed] 즐겨찾기 목록 + 정렬
+//   저장된 id 로 store 에서 실시간 데이터를 찾는다.
+//   아직 못 불러온 도시는 목록에서 제외된다.
 // --------------------------------------------
 const favoriteList = computed(() => {
-  // [문법] filter + includes
-  const list = weatherMockList.filter((item) => favoriteIds.value.includes(item.id))
+  const list = favorites.value
+    .map((fav) => cities.value.find((item) => item.id === fav.id))
+    // [문법] Boolean 을 넘기면 undefined·null 을 걸러낸다
+    .filter(Boolean)
 
   // [주의] sort 는 원본 배열을 직접 바꾸는(mutating) 메서드다.
   //        스프레드로 복사본을 만든 뒤 정렬해야 원본이 오염되지 않는다.
@@ -69,25 +101,13 @@ const favoriteList = computed(() => {
   return [...list].sort((a, b) => a.name.localeCompare(b.name)) // 이름 가나다순
 })
 
-// 정렬 변경 로그
-watch(sortKey, (newSort) => {
-  console.log(`[watch] 정렬 기준 변경: ${newSort}`)
-})
-
 // --------------------------------------------
 // 카드 이벤트 핸들러
-// [변경] 5장에서는 카드 클릭이 즐겨찾기 해제였다.
-//        6장에서는 카드 안에 별 아이콘이 생겼으므로
-//        카드 클릭은 아무 동작도 하지 않게 두고, 해제는 별로 처리한다.
-//        (WeatherCard 가 store 를 직접 구독하므로 여기서 할 일이 없다)
+//   카드 안에 별 아이콘이 있으므로 해제는 별이 전담한다.
+//   카드 클릭은 상세 페이지 이동.
 // --------------------------------------------
 const goDetail = (city) => {
   router.push({ name: 'weather-detail', params: { cityId: city.id } })
-}
-
-// 카드 전체 클릭 — 상세 페이지로 이동
-const handleSelectCard = (city) => {
-  goDetail(city)
 }
 </script>
 
@@ -96,47 +116,54 @@ const handleSelectCard = (city) => {
     <header class="favorite-header">
       <div>
         <h1>⭐ 즐겨찾기</h1>
-        <!-- [참고] store 의 getter 활용 -->
-        <p class="header-sub">자주 확인하는 도시를 모아봤습니다. 현재 {{ favoriteCount }}개</p>
+        <p class="header-sub">자주 확인하는 지역을 모아봤습니다. 현재 {{ favoriteCount }}개</p>
       </div>
     </header>
 
-    <BaseDashboardCard title="즐겨찾기 도시" icon="📌">
+    <BaseDashboardCard title="즐겨찾기 지역" icon="📌">
       <div class="list-toolbar">
-        <!-- [유지] 정렬 옵션 — 누르면 URL 이 /favorites?sort=temp 로 바뀐다 -->
-        <div class="sort-tabs">
-          <button :class="{ active: sortKey === 'name' }" @click="changeSort('name')">
-            이름순
-          </button>
-          <button :class="{ active: sortKey === 'temp' }" @click="changeSort('temp')">
-            기온순
-          </button>
-        </div>
+        <!-- 정렬 옵션 — 누르면 URL 이 /favorites?sort=temp 로 바뀐다 -->
+        <!-- [Element Plus] el-radio-group 으로 정렬 옵션을 표현한다.
+             "여러 선택지 중 하나"라는 의미가 마크업에 드러난다. -->
+        <el-radio-group :model-value="sortKey" size="small" @change="changeSort">
+          <el-radio-button value="name">이름순</el-radio-button>
+          <el-radio-button value="temp">기온순</el-radio-button>
+        </el-radio-group>
 
-        <!-- [추가] store 의 action 을 직접 호출 -->
-        <button v-if="favoriteList.length > 0" class="btn-clear" @click="clearAll">
+        <el-button v-if="favoriteCount > 0" type="danger" plain size="small" @click="clearAll">
           전체 삭제
-        </button>
+        </el-button>
       </div>
+
+      <el-skeleton v-if="isLoading" :rows="3" animated />
+
+      <el-alert
+        v-else-if="missingCities.length > 0"
+        class="mb"
+        type="warning"
+        :title="`일부 지역을 불러오지 못했습니다: ${missingCities.join(', ')}`"
+        :closable="false"
+        show-icon
+      />
 
       <!-- [재사용] WeatherCard 를 그대로 사용.
            카드가 store 를 직접 구독하므로 별 아이콘이 이 페이지에서도 동작한다. -->
-      <div class="card-grid">
+      <div v-if="favoriteList.length > 0" class="card-grid">
         <WeatherCard
           v-for="item in favoriteList"
           :key="item.id"
           :city="item"
-          @select-card="handleSelectCard"
+          @select-card="goDetail"
           @click-detail="goDetail"
         />
       </div>
 
-      <p v-if="favoriteList.length === 0" class="empty-message">
-        즐겨찾기한 도시가 없습니다.<br />
+      <p v-else-if="!isLoading" class="empty-message">
+        즐겨찾기한 지역이 없습니다.<br />
         대시보드에서 ☆ 를 눌러 추가해 보세요.
       </p>
 
-      <p v-else class="hint">★ 아이콘을 누르면 즐겨찾기에서 제외됩니다.</p>
+      <p v-if="favoriteList.length > 0" class="hint">★ 아이콘을 누르면 즐겨찾기에서 제외됩니다.</p>
     </BaseDashboardCard>
 
     <RouterLink to="/" class="link-home">← 메인 대시보드로 돌아가기</RouterLink>
@@ -182,58 +209,29 @@ const handleSelectCard = (city) => {
   margin-bottom: 14px;
 }
 
-.sort-tabs {
-  display: flex;
-  gap: 6px;
-}
-
-.sort-tabs button {
-  padding: 7px 15px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #6b7a90;
-  background: #f0f4fa;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    color 0.15s ease;
-}
-
-.sort-tabs button:hover {
-  background: #e3ebf7;
-}
-
-.sort-tabs button.active {
-  background: #5b9bf8;
-  color: #fff;
-}
-
-.btn-clear {
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #d9534f;
-  background: #fdefee;
-  border: 1px solid #f7d9d7;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.btn-clear:hover {
-  background: #fbe2e0;
+.mb {
+  margin-bottom: 14px;
 }
 
 /* 카드 목록 — 폭에 따라 열 수가 자동으로 늘어난다 */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
   gap: 12px;
 }
 
 /* ===== 기타 ===== */
+.state-message {
+  padding: 30px 0;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7a90;
+}
+
+.state-message.warn {
+  color: #8a5a12;
+}
+
 .empty-message {
   margin: 0;
   padding: 40px 0;

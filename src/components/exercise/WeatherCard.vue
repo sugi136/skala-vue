@@ -9,7 +9,10 @@
 import { computed } from 'vue'
 import { useConfigStore } from '@/stores/configStore.js'
 import { useFavoriteStore } from '@/stores/favoriteStore.js'
-import { hasAlert } from '@/data/weatherMockData.js'
+import { useWeatherStore } from '@/stores/weatherStore.js'
+// [Element Plus] 아이콘은 컴포넌트로 제공되므로 개별 import 가 필요하다
+import { Star, StarFilled } from '@element-plus/icons-vue'
+import { getIconUrl } from '@/api/weatherApi.js'
 
 const props = defineProps({
   city: {
@@ -26,6 +29,7 @@ const emit = defineEmits(['select-card', 'click-detail'])
 
 const configStore = useConfigStore()
 const favoriteStore = useFavoriteStore()
+const weatherStore = useWeatherStore()
 
 // --------------------------------------------
 // 단위 변환
@@ -50,13 +54,15 @@ const isFavorite = computed(() => favoriteStore.isFavorite(props.city.id))
 
 // 기상특보 발효 여부 — 카드에는 배지만 표시하고
 // 자세한 내용은 상세 페이지에서 확인하도록 한다
-const hasWeatherAlert = computed(() => hasAlert(props.city.id))
+const hasWeatherAlert = computed(() => weatherStore.findAlerts(props.city.id).length > 0)
 
 // 별 클릭 — store 의 action 을 직접 호출
 // [핵심] 부모에게 emit 하지 않는다. 전역 상태이므로 어느 컴포넌트에서 바꾸든
 //        같은 store 를 보는 모든 화면이 함께 갱신된다.
 const handleToggleFavorite = () => {
-  favoriteStore.toggleFavorite(props.city.id)
+  // [변경] 검색으로 추가된 도시는 regionList 에 없으므로
+  //        id 만이 아니라 도시 객체를 통째로 넘긴다
+  favoriteStore.toggleFavorite(props.city)
 }
 </script>
 
@@ -66,13 +72,19 @@ const handleToggleFavorite = () => {
     :class="{ 'is-selected': isSelected }"
     @click="emit('select-card', city)"
   >
-    <div class="card-icon">{{ city.icon }}</div>
+    <!-- API 응답의 icon 은 '02d' 같은 코드이므로 이미지 URL 로 변환해 표시한다 -->
+    <img class="card-icon" :src="getIconUrl(city.icon)" :alt="city.status" />
 
     <div class="card-main">
       <h4 class="card-name">
         {{ city.name }} <span class="card-status">({{ city.status }})</span>
         <!-- 특보가 발효 중일 때만 배지를 붙인다 -->
-        <span v-if="hasWeatherAlert" class="alert-badge" title="기상특보 발효 중">⚠️ 특보</span>
+        <span v-if="city.isCurrentLocation" class="location-badge" title="현재 위치">📍</span>
+        <span v-if="city.isSearched" class="searched-badge" title="검색으로 추가됨">검색</span>
+        <!-- [Element Plus] el-tag — 배지 스타일을 직접 만들지 않아도 된다 -->
+        <el-tag v-if="hasWeatherAlert" type="warning" size="small" effect="light" round>
+          ⚠️ 특보
+        </el-tag>
       </h4>
       <p class="card-temp">
         <!-- 변환된 온도 + store 의 단위 기호 -->
@@ -89,16 +101,24 @@ const handleToggleFavorite = () => {
     <div class="card-actions">
       <!-- 즐겨찾기 별 아이콘
            [핵심] @click.stop 으로 카드 선택 이벤트가 함께 발생하는 것을 막는다 -->
-      <button
+      <!-- [Element Plus] link 속성으로 배경 없는 아이콘 버튼을 만든다 -->
+      <el-button
         class="btn-star"
         :class="{ active: isFavorite }"
+        link
         :title="isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'"
         @click.stop="handleToggleFavorite"
       >
-        {{ isFavorite ? '★' : '☆' }}
-      </button>
+        <el-icon :size="20">
+          <StarFilled v-if="isFavorite" />
+          <Star v-else />
+        </el-icon>
+      </el-button>
 
-      <button class="btn-detail" @click.stop="emit('click-detail', city)">상세보기</button>
+      <!-- [Element Plus] el-button — hover·active·disabled 상태가 기본 제공된다 -->
+      <el-button type="primary" size="small" @click.stop="emit('click-detail', city)">
+        상세보기
+      </el-button>
     </div>
   </div>
 </template>
@@ -132,8 +152,8 @@ const handleToggleFavorite = () => {
 }
 
 .card-icon {
-  font-size: 42px;
-  line-height: 1;
+  width: 58px;
+  height: 58px;
   flex-shrink: 0;
 }
 
@@ -147,16 +167,23 @@ const handleToggleFavorite = () => {
   font-weight: 700;
 }
 
-.alert-badge {
+.location-badge,
+.searched-badge {
   display: inline-block;
-  margin-left: 6px;
-  padding: 2px 8px;
+  margin-left: 5px;
+  padding: 2px 7px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  color: #a8500f;
-  background: #ffeedb;
   vertical-align: middle;
+}
+.location-badge {
+  color: #2e6fbf;
+  background: #e6f0fe;
+}
+.searched-badge {
+  color: #5f6b7c;
+  background: #eef1f6;
 }
 
 .card-status {
@@ -203,44 +230,25 @@ const handleToggleFavorite = () => {
   flex-shrink: 0;
 }
 
-.btn-star {
-  width: 34px;
-  height: 34px;
-  font-size: 19px;
-  line-height: 1;
+:deep(.btn-star) {
   color: #c3ccda;
-  background: transparent;
-  border: none;
-  border-radius: 9px;
-  cursor: pointer;
   transition:
     color 0.15s ease,
-    background 0.15s ease,
     transform 0.15s ease;
 }
 
-.btn-star:hover {
-  background: #f2f6fd;
+:deep(.btn-star:hover) {
+  color: #f5b731;
   transform: scale(1.15);
 }
 
-.btn-star.active {
+:deep(.btn-star.active) {
   color: #f5b731;
 }
 
-.btn-detail {
-  padding: 9px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  background: #5b9bf8;
-  border: none;
+/* el-button 의 모서리를 카드 톤에 맞춘다 */
+:deep(.el-button) {
   border-radius: 9px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.btn-detail:hover {
-  background: #4287ef;
+  font-weight: 600;
 }
 </style>

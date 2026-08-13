@@ -1,47 +1,57 @@
 <script setup>
 // ============================================
-// 4장 Hands on : SearchBar.vue
+// src/components/exercise/SearchBar.vue
 //
-// [역할] 검색 입력창 + 검색 상태 안내
+// [설계] Element Plus 를 부분 적용한다.
+//   버튼·경고는 el-button / el-alert 로 교체했지만,
+//   입력창은 네이티브 <input> 을 유지한다.
 //
-// [핵심] 데이터의 주인은 부모(WeatherParent)다.
-//        이 컴포넌트는 값을 "빌려서 표시"하고(props),
-//        입력이 생기면 부모에게 "바꿔주세요"라고 요청한다(emits).
+//   [이유] el-input 은 한글 IME 조합이 끝나야 @input 을 발생시킨다.
+//          'ㅅ' 만 입력한 시점에는 이벤트가 오지 않아
+//          초성 검색이 실시간으로 동작하지 않는다.
+//          라이브러리의 편의 기능이 오히려 요구사항과 충돌하는 경우다.
 // ============================================
 
-// --------------------------------------------
-// [Props] 부모 -> 자식 (하행선)
-// [주의] props 는 읽기 전용. 자식이 직접 수정할 수 없다.
-// --------------------------------------------
-defineProps({
+const props = defineProps({
   // 부모가 관리하는 검색어
   query: {
     type: String,
     required: true,
   },
-  // 필터링 결과 건수 (부모의 computed 결과)
+  // 로컬 필터링 결과 건수
   resultCount: {
     type: Number,
     default: 0,
   },
+  // API 검색 진행 중 여부
+  isSearching: {
+    type: Boolean,
+    default: false,
+  },
+  // API 검색 실패 메시지
+  searchError: {
+    type: String,
+    default: '',
+  },
 })
 
-// --------------------------------------------
-// [Emits] 자식 -> 부모 (상행선)
-// 부모에게 보낼 커스텀 이벤트 이름을 등록한다.
-// --------------------------------------------
-const emit = defineEmits(['update-query'])
+const emit = defineEmits(['update-query', 'search-api'])
 
-// --------------------------------------------
-// [핵심] 입력이 발생하면 값을 직접 바꾸지 않고 부모에게 전달한다.
-//
-// [Customization] v-model 대신 :value + @input 을 쓰는 이유
-//   v-model 은 한글 IME 조합이 끝나야 값이 반영되어
-//   'ㅅ' 입력 시점에는 필터가 동작하지 않는다.
-//   @input 은 조합 중에도 발생하므로 초성 검색이 실시간으로 동작한다.
-// --------------------------------------------
+// [주의] 네이티브 input 이므로 이벤트 객체가 넘어온다.
+//        el-input 이었다면 값(문자열)이 바로 넘어와 시그니처가 다르다.
 const handleInput = (event) => {
   emit('update-query', event.target.value)
+}
+
+// 엔터를 눌렀을 때도 API 검색이 실행되도록 한다
+const handleEnter = () => {
+  if (props.query.trim() && props.resultCount === 0) {
+    emit('search-api', props.query)
+  }
+}
+
+const handleSearchClick = () => {
+  emit('search-api', props.query)
 }
 </script>
 
@@ -49,28 +59,50 @@ const handleInput = (event) => {
   <div class="search-area">
     <div class="search-box">
       <span class="search-icon">🔍</span>
-      <!-- [핵심] props(query)를 표시하고, 입력은 emit 으로 부모에게 올려보낸다 -->
       <input
         type="text"
         :value="query"
+        placeholder="지역 이름 또는 초성 입력 (예: 서울, ㅅㅇ)"
         @input="handleInput"
-        placeholder="도시 이름 또는 초성 입력 (예: 서울, ㅅㅇ)"
+        @keyup.enter="handleEnter"
       />
     </div>
 
-    <!-- [2장 문법 유지] v-if / v-else 로 입력 여부에 따라 다른 안내 -->
+    <!-- 입력 여부에 따라 다른 안내를 보여준다 -->
     <p class="search-status">
       <template v-if="query">
-        검색 중인 도시: <strong>{{ query }}</strong>
+        검색 중인 지역: <strong>{{ query }}</strong>
         <span class="result-count">({{ resultCount }}건)</span>
       </template>
-      <template v-else> 도시 이름을 입력하면 목록이 실시간으로 걸러집니다. </template>
+      <template v-else> 지역 이름을 입력하면 목록이 실시간으로 걸러집니다. </template>
     </p>
+
+    <!-- 목록에 없는 도시 — API 로 직접 조회한다 -->
+    <div v-if="query && resultCount === 0" class="search-fallback">
+      <!-- [Element Plus] loading 속성 하나로 스피너 표시와 클릭 차단을 함께 처리한다 -->
+      <el-button type="primary" :loading="isSearching" @click="handleSearchClick">
+        '{{ query }}' 를 API 에서 찾기
+      </el-button>
+
+      <p class="fallback-hint">
+        영문 도시명으로 검색하세요 (예: Tokyo, Osaka)<br />
+        추가한 지역은 새로고침하면 사라집니다. ★ 를 눌러 즐겨찾기에 저장하세요.
+      </p>
+    </div>
+
+    <!-- API 검색 실패 안내 -->
+    <el-alert
+      v-if="searchError"
+      class="search-error"
+      type="error"
+      :title="searchError"
+      :closable="false"
+      show-icon
+    />
   </div>
 </template>
 
 <style scoped>
-/* [요구사항 5] SearchBar 에 해당하는 디자인만 여기에 격리 */
 .search-box {
   display: flex;
   align-items: center;
@@ -114,5 +146,30 @@ const handleInput = (event) => {
   margin-left: 6px;
   font-size: 12px;
   opacity: 0.85;
+}
+
+/* ===== API 검색 ===== */
+.search-fallback {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 10px;
+}
+
+.fallback-hint {
+  margin: 9px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: #6b7a90;
+}
+
+.search-error {
+  margin-top: 10px;
+}
+
+/* Element Plus 기본값보다 모서리를 둥글게 맞춘다.
+   :deep() 는 scoped 안에서 자식 컴포넌트 내부 요소를 선택할 때 쓴다. */
+:deep(.el-alert) {
+  border-radius: 12px;
 }
 </style>

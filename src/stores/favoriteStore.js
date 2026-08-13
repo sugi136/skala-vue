@@ -1,23 +1,23 @@
 // ============================================
-// 6장 Hands on : src/stores/favoriteStore.js
-// 본인만의 추가 Store
-// [배경] 5장에서 즐겨찾기 목록은 FavoriteView 안의 지역 상태였다.
-//        그래서 대시보드에서 별을 눌러도 페이지를 이동하면 초기화되었다.
-//        store 로 올리면 앱 어디서든 같은 목록을 보고 변경할 수 있다.
-//        -> "왜 Pinia 가 필요한가"를 보여주는 사례
+// src/stores/favoriteStore.js
+//
+// [변경] id 문자열이 아니라 도시 객체를 저장한다.
+//
+//   기본 17개 도시는 id 만 알아도 regionList 에서 정보를 찾을 수 있다.
+//   그런데 검색으로 추가한 도시(예: tokyo)는 regionList 에 없으므로,
+//   id 만 저장하면 새로고침 후 어떤 도시였는지 알 수 없게 된다.
+//   따라서 { id, query, enName, name } 을 통째로 보관한다.
 // ============================================
 import { ref, computed, watch } from 'vue'
 import { defineStore } from 'pinia'
 
-// localStorage 에 저장할 때 사용하는 키
 const STORAGE_KEY = 'weather-favorites'
 
 // --------------------------------------------
 // 저장된 즐겨찾기를 불러온다.
 //
-// [주의] localStorage 는 문자열만 저장할 수 있으므로 JSON 으로 변환해 주고받는다.
-//        저장된 값이 손상되었거나 형식이 다를 수 있으므로 try/catch 로 감싼다.
-//        실패하면 빈 배열로 시작한다.
+// [주의] localStorage 는 문자열만 저장하므로 JSON 으로 변환해 주고받는다.
+//        저장 값이 손상되었거나 형식이 다를 수 있으므로 try/catch 로 감싼다.
 // --------------------------------------------
 const loadFavorites = () => {
   try {
@@ -25,8 +25,10 @@ const loadFavorites = () => {
     if (!saved) return []
 
     const parsed = JSON.parse(saved)
-    // 배열이 아닌 값이 저장돼 있으면 무시한다
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+
+    // 예전 버전(문자열 배열)이 저장돼 있으면 객체 형태로 변환한다
+    return parsed.map((item) => (typeof item === 'string' ? { id: item, name: item } : item))
   } catch (error) {
     console.warn('[favoriteStore] 저장된 즐겨찾기를 불러오지 못했습니다.', error)
     return []
@@ -35,24 +37,22 @@ const loadFavorites = () => {
 
 export const useFavoriteStore = defineStore('favorite', () => {
   // --------------------------------------------
-  // 1. state — 즐겨찾기한 도시 id 목록
+  // 1. state — [{ id, enName, name }] 형태
   // --------------------------------------------
-  // 초기값을 localStorage 에서 불러온다 -> 새로고침해도 유지된다
-  const favoriteIds = ref(loadFavorites())
+  const favorites = ref(loadFavorites())
 
   // --------------------------------------------
-  // [핵심] 목록이 바뀔 때마다 자동으로 저장한다.
+  // 목록이 바뀔 때마다 자동 저장.
   //
   //   각 action 마다 저장 코드를 넣으면 중복이 생기고,
   //   나중에 action 을 추가할 때 저장을 빠뜨리기 쉽다.
   //   watch 로 한 곳에서 처리하면 그런 실수가 없다.
   //
-  // [주의] 배열을 통째로 교체하는 방식(filter, 스프레드)으로만 변경하므로
-  //        deep 옵션 없이도 감지된다.
+  // [주의] 배열을 통째로 교체하는 방식으로만 변경하므로 deep 옵션이 필요 없다.
   // --------------------------------------------
-  watch(favoriteIds, (newIds) => {
+  watch(favorites, (newList) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newIds))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList))
     } catch (error) {
       // 사파리 시크릿 모드 등 저장이 막힌 환경에서도 앱이 멈추지 않도록 한다
       console.warn('[favoriteStore] 즐겨찾기를 저장하지 못했습니다.', error)
@@ -62,42 +62,55 @@ export const useFavoriteStore = defineStore('favorite', () => {
   // --------------------------------------------
   // 2. getters
   // --------------------------------------------
-  const favoriteCount = computed(() => favoriteIds.value.length)
+  const favoriteIds = computed(() => favorites.value.map((item) => item.id))
 
-  const hasFavorite = computed(() => favoriteIds.value.length > 0)
+  const favoriteCount = computed(() => favorites.value.length)
 
-  // [핵심] 특정 id 가 즐겨찾기인지 판별
-  //   getter 가 "인자를 받아야" 할 때는 함수를 반환하는 computed 로 만든다.
-  //   사용: favoriteStore.isFavorite('seoul')
-  //   [주의] 이 형태는 결과가 캐싱되지 않는다. 매번 새로 계산된다.
+  const hasFavorite = computed(() => favorites.value.length > 0)
+
+  // [핵심] 인자를 받는 getter 는 함수를 반환하는 computed 로 만든다
   const isFavorite = computed(() => (cityId) => favoriteIds.value.includes(cityId))
 
   // --------------------------------------------
   // 3. actions
   // --------------------------------------------
-  // 별 아이콘 클릭 시 추가/제거를 토글
-  function toggleFavorite(cityId) {
-    if (favoriteIds.value.includes(cityId)) {
+
+  /**
+   * 즐겨찾기 추가/제거를 토글한다.
+   * @param {object} city - { id, enName, name } 최소 이 세 개는 있어야 한다
+   */
+  function toggleFavorite(city) {
+    if (favoriteIds.value.includes(city.id)) {
       // [문법] filter 로 해당 id 를 제외한 새 배열 생성
-      favoriteIds.value = favoriteIds.value.filter((id) => id !== cityId)
+      favorites.value = favorites.value.filter((item) => item.id !== city.id)
     } else {
-      // [문법] 스프레드로 기존 배열에 새 id 를 더한 새 배열 생성
-      favoriteIds.value = [...favoriteIds.value, cityId]
+      // 화면 렌더링에 필요한 최소 정보만 저장한다.
+      // 기온·아이콘 등 실시간 값은 저장하지 않는다 (금방 낡기 때문)
+      favorites.value = [
+        ...favorites.value,
+        {
+          id: city.id,
+          enName: city.enName,
+          name: city.name,
+          isSearched: city.isSearched ?? false,
+        },
+      ]
     }
   }
 
   function removeFavorite(cityId) {
-    favoriteIds.value = favoriteIds.value.filter((id) => id !== cityId)
+    favorites.value = favorites.value.filter((item) => item.id !== cityId)
   }
 
   function clearAll() {
-    favoriteIds.value = []
+    favorites.value = []
   }
 
   return {
     // state
-    favoriteIds,
+    favorites,
     // getters
+    favoriteIds,
     favoriteCount,
     hasFavorite,
     isFavorite,

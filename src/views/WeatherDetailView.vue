@@ -1,11 +1,10 @@
 <script setup>
 // ============================================
 // views/WeatherDetailView.vue
-// [변경 사항]
-//   - 상세 관측 항목 11개로 확장 (자외선 / 꽃가루 / 미세먼지 추가)
-//   - 시간대별 예보(24시간) 섹션 추가
-//   - 데스크톱 기준 레이아웃으로 폭 확대 (940 -> 1200px)
-//   - 헤더에 핵심 지표를 함께 배치해 여백 축소
+//
+// [변경] 직접 API 를 호출하던 것을 weatherStore 로 일원화
+//   - 메인에서 이미 받아온 데이터가 있으면 재요청하지 않는다 (캐시)
+//   - URL 로 직접 접근한 경우에는 store 가 알아서 조회한다
 // ============================================
 import { ref, computed, onMounted } from 'vue'
 // [핵심] useRoute  — 현재 주소의 정보를 읽는다 (params, query 등)
@@ -16,19 +15,18 @@ import BaseDashboardCard from '@/components/exercise/BaseDashboardCard.vue'
 import WeatherAlert from '@/components/exercise/WeatherAlert.vue'
 import HourlyStrip from '@/components/exercise/HourlyStrip.vue'
 import ForecastStrip from '@/components/exercise/ForecastStrip.vue'
-import {
-  findCityById,
-  findDetailById,
-  findForecastById,
-  findHourlyById,
-  findAlertById,
-} from '@/data/weatherMockData.js'
+
 import { useConfigStore } from '@/stores/configStore.js'
+import { useWeatherStore } from '@/stores/weatherStore.js'
 import { useFavoriteStore } from '@/stores/favoriteStore.js'
+import { getIconUrl } from '@/api/weatherApi.js'
+import { Star, StarFilled } from '@element-plus/icons-vue'
+import { pm10Tone, uvTone as getUvTone } from '@/api/publicDataApi.js'
 
 const route = useRoute()
 const router = useRouter()
 const configStore = useConfigStore()
+const weatherStore = useWeatherStore()
 const favoriteStore = useFavoriteStore()
 
 // --------------------------------------------
@@ -37,112 +35,125 @@ const favoriteStore = useFavoriteStore()
 // --------------------------------------------
 const cityId = route.params.cityId
 
-const city = ref(null)
-const detail = ref(null)
-const hourly = ref([])
-const forecast = ref([])
-const alerts = ref([])
 const isLoading = ref(true)
+const errorMessage = ref('')
 
 // --------------------------------------------
-// [핵심] onMounted 는 컴포넌트가 실제 DOM 에 부착된 직후 실행된다.
-//   [예정] 여기가 axios 로 실제 API 를 호출할 자리다.
+// store 에서 데이터를 읽는다.
+//
+// [핵심] ref 로 복사하지 않고 computed 로 store 를 참조한다.
+//        store 가 갱신되면(단위 변경, 목록 새로고침 등) 화면도 따라온다.
 // --------------------------------------------
-onMounted(() => {
-  city.value = findCityById(cityId)
-  detail.value = findDetailById(cityId)
-  alerts.value = findAlertById(cityId)
-  hourly.value = findHourlyById(cityId)
-  forecast.value = findForecastById(cityId)
-  isLoading.value = false
+const city = computed(() => weatherStore.findCity(cityId))
+const detail = computed(() => weatherStore.findDetail(cityId))
+const hourly = computed(() => weatherStore.findForecast(cityId)?.hourly ?? [])
+const forecast = computed(() => weatherStore.findForecast(cityId)?.daily ?? [])
 
-  console.log(`[onMounted] cityId='${cityId}' 로 상세 데이터 조회`)
+// 공공데이터포털 — 미세먼지·자외선
+const air = computed(() => weatherStore.findAir(cityId))
+
+// 기상특보 — 전국 목록에서 이 지역 것만 걸러낸다
+const alerts = computed(() => weatherStore.findAlerts(cityId))
+
+// --------------------------------------------
+// [핵심] onMounted 는 DOM 부착 직후 실행되므로 API 호출의 적기다.
+//
+//   ensureDetail / ensureForecast 는 캐시를 먼저 확인하므로,
+//   메인에서 넘어온 경우에는 네트워크 요청이 발생하지 않는다.
+//   URL 로 직접 접근한 경우에만 실제 호출이 일어난다.
+// --------------------------------------------
+onMounted(async () => {
+  try {
+    // OpenWeather 데이터가 화면의 뼈대이므로 먼저 확보한다.
+    // 순차로 하면 두 번 기다려야 하므로 Promise.all 로 묶는다.
+    await Promise.all([weatherStore.ensureDetail(cityId), weatherStore.ensureForecast(cityId)])
+  } catch (error) {
+    // 인터셉터가 가공한 메시지가 여기로 온다
+    errorMessage.value = error.message
+  } finally {
+    isLoading.value = false
+  }
+
+  // 공공데이터포털은 보조 정보이므로 화면을 막지 않는다.
+  // await 하지 않고 별도로 진행시켜, 도착하는 대로 화면에 반영되게 한다.
+  weatherStore.ensureAirData(cityId).catch(() => {})
+  weatherStore.ensureAlerts().catch(() => {})
+
+  console.log(`[onMounted] cityId='${cityId}' 상세 데이터 확보 완료`)
 })
 
 // --------------------------------------------
-// [computed] 상세 항목 11개
+// [computed] 상세 항목
 //   [주의] 온도 단위 변환은 체감 온도에만 적용한다.
 //          습도·바람·기압 등은 온도 단위와 무관하다.
 // --------------------------------------------
 const detailItems = computed(() => {
   if (!detail.value) return []
 
+  const d = detail.value
+
   return [
     {
       id: 'd1',
       icon: '🌡️',
       label: '체감 온도',
-      value: `${configStore.convertTemp(detail.value.feelsLike)}${configStore.unitSymbol}`,
+      value: `${configStore.convertTemp(d.feelsLike)}${configStore.unitSymbol}`,
     },
-    { id: 'd2', icon: '💧', label: '습도', value: `${detail.value.humidity}%` },
-    {
-      id: 'd3',
-      icon: '🍃',
-      label: '바람',
-      value: `${detail.value.windSpeed} m/s`,
-      sub: detail.value.windDir,
-    },
-    { id: 'd4', icon: '☁️', label: '구름량', value: `${detail.value.clouds}%` },
-    { id: 'd5', icon: '🔭', label: '가시거리', value: `${detail.value.visibility} km` },
-    { id: 'd6', icon: '🎈', label: '기압', value: `${detail.value.pressure} hPa` },
-    { id: 'd7', icon: '🌅', label: '일출', value: detail.value.sunrise },
-    { id: 'd8', icon: '🌇', label: '일몰', value: detail.value.sunset },
-    // [공공데이터포털] 기상청_생활기상지수 조회서비스(4.0)
-    {
-      id: 'd9',
-      icon: '😎',
-      label: '자외선',
-      value: `${detail.value.uvIndex}`,
-      sub: detail.value.uvLevel,
-      tone: uvTone(detail.value.uvIndex),
-    },
-    // [공공데이터포털] 기상청_꽃가루농도위험지수 조회서비스(3.0)
+    { id: 'd2', icon: '💧', label: '습도', value: `${d.humidity}%` },
+    { id: 'd3', icon: '🍃', label: '바람', value: `${d.windSpeed} m/s`, sub: d.windDir },
+    { id: 'd4', icon: '☁️', label: '구름량', value: `${d.clouds}%` },
+    { id: 'd5', icon: '🔭', label: '가시거리', value: `${d.visibility} km` },
+    { id: 'd6', icon: '🎈', label: '기압', value: `${d.pressure} hPa` },
+    { id: 'd7', icon: '🌅', label: '일출', value: d.sunrise },
+    { id: 'd8', icon: '🌇', label: '일몰', value: d.sunset },
+    // 강수량은 비가 올 때만 응답에 포함되므로 없으면 0 으로 표시된다
+    { id: 'd9', icon: '☔', label: '강수량', value: `${d.rain1h} mm`, sub: '최근 1시간' },
+    // 아래는 공공데이터포털 데이터.
+    // 아직 도착하지 않았거나 국내 지역이 아니면 '—' 로 표시된다.
     {
       id: 'd10',
-      icon: '🌾',
-      label: '꽃가루',
-      value: `${detail.value.pollen}`,
-      sub: detail.value.pollenLevel,
+      icon: '😎',
+      label: '자외선',
+      value: air.value?.uv ? `${air.value.uv.value}` : '—',
+      sub: air.value?.uv?.level ?? '기상청 생활기상지수',
+      tone: air.value?.uv ? getUvTone(air.value.uv.value) : null,
     },
-    // [공공데이터포털] 에어코리아 미세먼지 정보
     {
       id: 'd11',
       icon: '🌫️',
       label: '미세먼지',
-      value: `${detail.value.dust}`,
-      sub: `㎍/㎥ · ${detail.value.dustLevel}`,
-      tone: dustTone(detail.value.dust),
+      value: air.value?.dust ? `${air.value.dust.pm10}` : '—',
+      sub: air.value?.dust ? `㎍/㎥ · ${air.value.dust.grade}` : '에어코리아',
+      tone: air.value?.dust ? pm10Tone(air.value.dust.pm10) : null,
+    },
+    {
+      id: 'd12',
+      icon: '😷',
+      label: '초미세먼지',
+      value: air.value?.dust?.pm25 != null ? `${air.value.dust.pm25}` : '—',
+      sub: '㎍/㎥ · PM2.5',
     },
   ]
 })
 
-// --------------------------------------------
-// [Customization] 지수 구간에 따른 강조 색 클래스
-//   기상청 자외선지수 기준: 3미만 낮음 / 3~5 보통 / 6~7 높음 / 8~10 매우높음 / 11이상 위험
-//   에어코리아 미세먼지(PM10) 기준: 0~30 좋음 / 31~80 보통 / 81~150 나쁨 / 151~ 매우나쁨
-// --------------------------------------------
-function uvTone(value) {
-  if (value >= 8) return 'danger'
-  if (value >= 6) return 'warn'
-  return 'safe'
-}
+// [참고] 구간별 색상 판정 기준은 publicDataApi.js 에 모아두었다.
+//   기상청 자외선지수: 3미만 낮음 / 3~5 보통 / 6~7 높음 / 8~10 매우높음 / 11이상 위험
+//   에어코리아 PM10: 0~30 좋음 / 31~80 보통 / 81~150 나쁨 / 151~ 매우나쁨
 
-function dustTone(value) {
-  if (value > 80) return 'danger'
-  if (value > 30) return 'warn'
-  return 'safe'
-}
-
-// 즐겨찾기 토글
+// --------------------------------------------
+// 즐겨찾기
+// --------------------------------------------
 const isFavorite = computed(() => favoriteStore.isFavorite(cityId))
 
 const handleToggleFavorite = () => {
-  favoriteStore.toggleFavorite(cityId)
+  if (!city.value) return
+  // 검색으로 추가된 도시는 regionList 에 없으므로 객체를 통째로 넘긴다
+  favoriteStore.toggleFavorite(city.value)
 }
 
 // --------------------------------------------
 // [핵심] 뒤로 가기
-//   [주의] 주소창에 직접 URL 을 입력해 들어온 경우 돌아갈 히스토리가 없으므로,
+//   [주의] 주소창에 URL 을 직접 입력해 들어온 경우 돌아갈 히스토리가 없으므로,
 //          홈으로 가는 RouterLink 도 함께 제공한다.
 // --------------------------------------------
 const goBack = () => {
@@ -152,40 +163,56 @@ const goBack = () => {
 
 <template>
   <div class="detail-wrapper">
-    <!-- [핵심] v-if / v-else-if / v-else 3단 분기 -->
-    <p v-if="isLoading" class="state-message">불러오는 중...</p>
+    <!-- 로딩 중 / 에러 / 데이터 있음 / 존재하지 않는 도시 -->
+    <!-- [Element Plus] el-skeleton — 로딩 중 레이아웃 뼈대를 보여준다 -->
+    <el-skeleton v-if="isLoading" :rows="6" animated />
 
-    <template v-else-if="city">
+    <div v-else-if="errorMessage" class="state-message">
+      <el-alert type="error" :title="errorMessage" :closable="false" show-icon />
+      <RouterLink to="/" class="link-home">대시보드로 돌아가기</RouterLink>
+    </div>
+
+    <template v-else-if="city && detail">
       <!-- ===== 헤더 ===== -->
       <header class="detail-header">
         <div class="header-bar">
-          <button class="btn-back" @click="goBack">← 뒤로</button>
+          <!-- [Element Plus] link 속성 — 배경과 테두리 없이 텍스트만 남긴다.
+               파란 헤더 위에서는 버튼 박스가 오히려 지저분해 보인다. -->
+          <el-button class="btn-ghost" link @click="goBack">← 뒤로</el-button>
 
-          <button
+          <!-- 별 아이콘만 남긴다. 의미는 title 툴팁으로 전달 -->
+          <el-button
             class="btn-star"
-            :class="{ active: isFavorite }"
+            :class="{ 'is-fav': isFavorite }"
+            link
             :title="isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'"
             @click="handleToggleFavorite"
           >
-            {{ isFavorite ? '★ 즐겨찾기' : '☆ 즐겨찾기' }}
-          </button>
+            <el-icon :size="24">
+              <StarFilled v-if="isFavorite" />
+              <Star v-else />
+            </el-icon>
+          </el-button>
         </div>
 
         <div class="header-body">
           <!-- 왼쪽: 도시명 + 큰 온도 -->
           <div class="header-main">
-            <div class="header-icon">{{ city.icon }}</div>
+            <img class="header-icon" :src="getIconUrl(city.icon)" :alt="city.status" />
             <div>
               <p class="header-en">{{ city.enName }}</p>
               <h1>{{ city.name }}</h1>
-              <p class="header-status">{{ city.status }}</p>
+              <p class="header-status">
+                {{ city.status }}
+                <span v-if="city.region" class="header-region">· {{ city.region }}</span>
+              </p>
             </div>
             <p class="header-temp">
               {{ configStore.convertTemp(city.temp) }}<span>{{ configStore.unitSymbol }}</span>
             </p>
           </div>
 
-          <!-- 오른쪽: 핵심 지표 요약 (헤더 여백 축소) -->
+          <!-- 오른쪽: 핵심 지표 요약 -->
           <div class="header-quick">
             <div class="quick-item">
               <p class="quick-label">체감</p>
@@ -202,8 +229,8 @@ const goBack = () => {
               <p class="quick-value">{{ detail.windSpeed }}m/s</p>
             </div>
             <div class="quick-item">
-              <p class="quick-label">미세먼지</p>
-              <p class="quick-value">{{ detail.dustLevel }}</p>
+              <p class="quick-label">구름량</p>
+              <p class="quick-value">{{ detail.clouds }}%</p>
             </div>
           </div>
         </div>
@@ -247,14 +274,13 @@ const goBack = () => {
 
     <!-- 존재하지 않는 도시 ID 로 접근한 경우 -->
     <div v-else class="state-message">
-      <p>'{{ cityId }}' 에 해당하는 도시 정보를 찾을 수 없습니다.</p>
+      <p>'{{ cityId }}' 에 해당하는 지역 정보를 찾을 수 없습니다.</p>
       <RouterLink to="/" class="link-home">대시보드로 돌아가기</RouterLink>
     </div>
   </div>
 </template>
 
 <style scoped>
-/* [레이아웃] 데스크톱 기준 1200px — 모바일 앱을 늘린 듯한 여백을 줄인다 */
 .detail-wrapper {
   width: min(1400px, 100%);
   margin-inline: auto;
@@ -278,27 +304,34 @@ const goBack = () => {
   justify-content: space-between;
 }
 
-.btn-back,
-.btn-star {
-  padding: 7px 14px;
+/* 헤더가 파란 배경이므로 글자만 흰색으로 맞춘다.
+   :deep() 는 scoped 안에서 자식 컴포넌트 내부를 선택할 때 쓴다. */
+:deep(.btn-ghost) {
+  color: rgba(255, 255, 255, 0.85);
   font-size: 13px;
   font-weight: 600;
+}
+
+:deep(.btn-ghost:hover) {
   color: #fff;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s ease;
 }
 
-.btn-back:hover,
-.btn-star:hover {
-  background: rgba(255, 255, 255, 0.32);
+/* 별 아이콘 — 켜지면 노란색 */
+:deep(.btn-star) {
+  color: rgba(255, 255, 255, 0.8);
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
-.btn-star.active {
-  background: rgba(255, 255, 255, 0.9);
-  color: #e0a020;
+:deep(.btn-star:hover) {
+  color: #fff;
+  transform: scale(1.15);
+}
+
+:deep(.btn-star.is-fav),
+:deep(.btn-star.is-fav:hover) {
+  color: #ffd43b;
 }
 
 /* 헤더 본문 — 좌(도시 정보) / 우(핵심 지표) */
@@ -317,8 +350,9 @@ const goBack = () => {
 }
 
 .header-icon {
-  font-size: 64px;
-  line-height: 1;
+  width: 92px;
+  height: 92px;
+  flex-shrink: 0;
 }
 
 .header-en {
@@ -341,6 +375,10 @@ const goBack = () => {
   margin: 4px 0 0;
   font-size: 14px;
   opacity: 0.9;
+}
+
+.header-region {
+  opacity: 0.75;
 }
 
 .header-temp {
@@ -386,7 +424,7 @@ const goBack = () => {
 }
 
 /* ===== 상세 항목 그리드 ===== */
-/* [레이아웃] 11개 항목 -> 6열 2행 (6 + 5) */
+/* 폭에 따라 열 수가 자동으로 조정된다 */
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -492,7 +530,8 @@ const goBack = () => {
     padding: 18px 20px 22px;
   }
   .header-icon {
-    font-size: 48px;
+    width: 70px;
+    height: 70px;
   }
   .detail-header h1 {
     font-size: 27px;

@@ -2,13 +2,16 @@
 // ============================================
 // src/components/exercise/WeatherAlert.vue
 //
-// [역할] 기상특보를 배너 형태로 표시
+// [변경] 직접 만든 배너 -> <el-alert>
+//
+//   경고 UI 는 라이브러리가 잘 만들어 둔 대표적인 영역이다.
+//   type 속성 하나로 색상·아이콘·접근성 속성이 함께 적용된다.
+//     warning(주의보) -> 주황 계열
+//     error(경보)     -> 빨강 계열
 //
 // [핵심] 특보는 평소에 없는 것이 정상이므로,
 //        데이터가 없으면 아무것도 렌더링하지 않는다.
 //        부모가 v-if 를 쓰지 않아도 되도록 이 컴포넌트가 스스로 판단한다.
-//
-// [예정] 공공데이터포털 기상청_기상특보 조회서비스 응답으로 대체된다.
 // ============================================
 
 defineProps({
@@ -38,29 +41,34 @@ const ALERT_ICON = {
 
 // [문법] ?? — 정의되지 않은 특보 종류는 기본 아이콘 사용
 const getIcon = (type) => ALERT_ICON[type] ?? '⚠️'
+
+// level 을 Element Plus 의 type 값으로 변환한다
+const toElType = (level) => (level === 'alert' ? 'error' : 'warning')
 </script>
 
 <template>
-  <!-- 특보가 없으면 이 컴포넌트는 아무것도 그리지 않는다 -->
   <div v-if="items.length > 0" class="alert-list">
-    <!-- [문법] :class 배열 — level 에 따라 주의보/경보 색을 다르게 -->
-    <div
+    <el-alert
       v-for="alert in items"
       :key="alert.id"
-      class="alert-banner"
-      :class="['level-' + alert.level]"
+      :type="toElType(alert.level)"
+      :closable="false"
+      show-icon
     >
-      <span class="alert-icon">{{ getIcon(alert.type) }}</span>
-
-      <div class="alert-body">
+      <!-- [문법] el-alert 의 title 슬롯 — 문자열 대신 마크업을 넣을 때 사용 -->
+      <template #title>
         <div class="alert-head">
+          <span class="alert-emoji">{{ getIcon(alert.type) }}</span>
           <strong class="alert-title">{{ alert.title }}</strong>
-          <span class="alert-badge">{{ alert.level === 'alert' ? '경보' : '주의보' }}</span>
-          <span class="alert-time">{{ alert.issuedAt }} 발표</span>
+          <el-tag :type="toElType(alert.level)" size="small" effect="dark" round>
+            {{ alert.level === 'alert' ? '경보' : '주의보' }}
+          </el-tag>
+          <span v-if="alert.issuedAt" class="alert-time">{{ alert.issuedAt }} 발표</span>
         </div>
-        <p class="alert-message">{{ alert.message }}</p>
-      </div>
-    </div>
+      </template>
+
+      <p class="alert-message">{{ alert.message }}</p>
+    </el-alert>
   </div>
 </template>
 
@@ -72,39 +80,6 @@ const getIcon = (type) => ALERT_ICON[type] ?? '⚠️'
   margin-bottom: 18px;
 }
 
-.alert-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 16px 20px;
-  border-radius: 14px;
-  border-left: 5px solid;
-}
-
-/* 주의보 — 주황 계열 */
-.alert-banner.level-warning {
-  background: #fff7ec;
-  border-color: #f0a63c;
-  color: #8a5a12;
-}
-
-/* 경보 — 빨강 계열 (더 강한 경고) */
-.alert-banner.level-alert {
-  background: #fdefee;
-  border-color: #d94f4f;
-  color: #922f2f;
-}
-
-.alert-icon {
-  font-size: 26px;
-  line-height: 1.2;
-  flex-shrink: 0;
-}
-
-.alert-body {
-  flex: 1;
-}
-
 .alert-head {
   display: flex;
   align-items: center;
@@ -112,25 +87,13 @@ const getIcon = (type) => ALERT_ICON[type] ?? '⚠️'
   gap: 8px;
 }
 
+.alert-emoji {
+  font-size: 17px;
+}
+
 .alert-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
-}
-
-.alert-badge {
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #fff;
-}
-
-.level-warning .alert-badge {
-  background: #f0a63c;
-}
-
-.level-alert .alert-badge {
-  background: #d94f4f;
 }
 
 .alert-time {
@@ -139,18 +102,14 @@ const getIcon = (type) => ALERT_ICON[type] ?? '⚠️'
 }
 
 .alert-message {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.6;
-  opacity: 0.92;
 }
 
-@media (max-width: 520px) {
-  .alert-banner {
-    padding: 14px 16px;
-  }
-  .alert-icon {
-    font-size: 22px;
-  }
+/* Element Plus 기본값보다 여백을 조금 넉넉하게 */
+:deep(.el-alert) {
+  padding: 14px 18px;
+  border-radius: 14px;
 }
 </style>

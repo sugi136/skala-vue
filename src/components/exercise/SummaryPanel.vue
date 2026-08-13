@@ -1,9 +1,7 @@
 <script setup>
 // ============================================
 // 4장 Hands on : SummaryPanel.vue
-//
-// [요구사항 7] 본인 Mockup 부분에서 추가로 분리한 컴포넌트
-//
+// 본인 Mockup 부분에서 추가로 분리한 컴포넌트
 // [역할] 우측 "오늘의 요약" 목록을 표시
 // [핵심] 계산은 부모(computed)가 하고, 이 컴포넌트는 결과만 받아 그린다.
 //        -> 표시 책임과 계산 책임의 분리
@@ -73,7 +71,13 @@ defineProps({
   background: #f0edff;
 }
 .tone-count {
-  background: #e9f8ef;
+  background: #fff0ec;
+}
+.tone-gap {
+  background: #f3f0ff;
+}
+.tone-rain {
+  background: #e6f3ff;
 }
 
 .summary-text {

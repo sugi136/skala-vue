@@ -11,6 +11,7 @@
 //       이 컴포넌트 자체는 수정할 필요가 없다.
 // ============================================
 import { useConfigStore } from '@/stores/configStore.js'
+import { getIconUrl } from '@/api/weatherApi.js'
 
 const configStore = useConfigStore()
 
@@ -32,7 +33,7 @@ defineProps({
     <div v-for="day in items" :key="day.id" class="forecast-item">
       <p class="forecast-day">{{ day.day }}</p>
       <p class="forecast-date">{{ day.date }}</p>
-      <div class="forecast-icon">{{ day.icon }}</div>
+      <img class="forecast-icon" :src="getIconUrl(day.icon)" alt="" />
       <!-- [변경] store 의 변환 함수를 거쳐 표시 -->
       <p class="forecast-high">{{ configStore.convertTemp(day.high) }}°</p>
       <p class="forecast-low">{{ configStore.convertTemp(day.low) }}°</p>
@@ -86,9 +87,10 @@ defineProps({
 }
 
 .forecast-icon {
-  margin: 14px 0 10px;
-  font-size: 30px;
-  line-height: 1;
+  display: block;
+  width: 52px;
+  height: 52px;
+  margin: 6px auto 2px;
 }
 
 .forecast-high {

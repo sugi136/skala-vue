@@ -8,6 +8,7 @@
 //       5일 예보와 달리 날짜별로 묶는 가공이 필요 없다.
 // ============================================
 import { useConfigStore } from '@/stores/configStore.js'
+import { getIconUrl } from '@/api/weatherApi.js'
 
 const configStore = useConfigStore()
 
@@ -26,7 +27,7 @@ defineProps({
   <div v-else class="hourly-strip">
     <div v-for="hour in items" :key="hour.id" class="hourly-item">
       <p class="hourly-time">{{ hour.time }}</p>
-      <div class="hourly-icon">{{ hour.icon }}</div>
+      <img class="hourly-icon" :src="getIconUrl(hour.icon)" alt="" />
       <!-- store 의 변환 함수를 거쳐 단위 설정을 따른다 -->
       <p class="hourly-temp">{{ configStore.convertTemp(hour.temp) }}°</p>
 
@@ -76,9 +77,10 @@ defineProps({
 }
 
 .hourly-icon {
-  margin: 10px 0 8px;
-  font-size: 26px;
-  line-height: 1;
+  display: block;
+  width: 46px;
+  height: 46px;
+  margin: 4px auto 0;
 }
 
 .hourly-temp {
