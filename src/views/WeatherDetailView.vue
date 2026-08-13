@@ -122,7 +122,8 @@ const detailItems = computed(() => {
       icon: '😎',
       label: '자외선',
       value: air.value?.uv ? `${air.value.uv.value}` : '—',
-      sub: air.value?.uv?.level ?? '기상청 생활기상지수',
+      // 검색으로 추가한 도시는 행정구역코드가 없어 조회할 수 없다
+      sub: air.value?.uv?.level ?? '기본 지역만 지원',
       tone: air.value?.uv ? getUvTone(air.value.uv.value) : null,
     },
     {

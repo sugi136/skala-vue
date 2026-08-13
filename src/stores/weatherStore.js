@@ -72,9 +72,13 @@ export const useWeatherStore = defineStore('weather', () => {
 
   // 특정 지역의 기상특보만 골라낸다
   const findAlerts = computed(() => (cityId) => {
-    const region = findRegionById(cityId)
-    if (!region) return []
-    return filterAlertsByRegion(allAlerts.value, region.region)
+    // 기본 17개 지역이면 regionList 의 값을,
+    // 검색으로 추가한 도시면 cityNameMap 이 실어준 값을 쓴다
+    const regionName =
+      findRegionById(cityId)?.region ?? cities.value.find((c) => c.id === cityId)?.region
+
+    if (!regionName) return []
+    return filterAlertsByRegion(allAlerts.value, regionName)
   })
 
   // 검색으로 추가된 도시만 추린다
@@ -173,13 +177,14 @@ export const useWeatherStore = defineStore('weather', () => {
 
     // [핵심] 한글 검색어를 영문 조회어로 변환한다.
     //        매핑에 없으면 입력값을 그대로 쓰므로 영문 검색도 계속 동작한다.
-    const { query, koreanName } = resolveSearchKeyword(trimmed)
+    const { query, koreanName, sidoName, region } = resolveSearchKeyword(trimmed)
 
     const { city, detail } = await searchCity(query)
 
-    // 매핑으로 찾은 도시는 사용자가 입력한 한글명을 표시명으로 쓴다.
-    // (API 응답에는 한글 도시명이 없다)
-    const resolved = koreanName ? { ...city, name: koreanName } : city
+    // 매핑으로 찾은 도시는 사용자가 입력한 한글명을 표시명으로 쓰고,
+    // 공공데이터 조회에 필요한 시도 정보도 함께 실어준다.
+    // (API 응답에는 한글 도시명도, 행정구역 정보도 없다)
+    const resolved = koreanName ? { ...city, name: koreanName, sidoName, region } : city
 
     // 이미 목록에 있으면 중복 추가하지 않는다
     if (findCity.value(resolved.id)) return resolved.id
@@ -237,26 +242,33 @@ export const useWeatherStore = defineStore('weather', () => {
     if (airMap.value[cityId]) return airMap.value[cityId]
 
     const region = findRegionById(cityId)
-    // 검색으로 추가한 해외 도시 등은 국내 지역코드가 없으므로 건너뛴다
-    if (!region) return null
+
+    // 기본 17개 지역이면 regionList 의 코드를, 검색으로 추가한 도시면
+    // cityNameMap 이 실어준 시도명을 쓴다.
+    const city = findCity.value(cityId)
+    const sidoName = region?.sidoName ?? city?.sidoName ?? null
+
+    // 자외선은 도시별 행정구역코드(areaNo)가 필요하다.
+    // 검색 추가 도시는 코드가 없으므로 조회를 건너뛴다.
+    const areaNo = region?.areaNo ?? null
+
+    // 둘 다 없으면 조회할 것이 없다 (해외 도시 등)
+    if (!sidoName && !areaNo) return null
 
     // [문법] allSettled — 하나가 실패해도 나머지 결과는 받는다
+    //        조회 대상이 없는 항목은 즉시 null 을 반환하는 Promise 로 채운다
     const [dustResult, uvResult] = await Promise.allSettled([
-      fetchDustBySido(region.sidoName),
-      fetchUvByArea(region.areaNo),
+      sidoName ? fetchDustBySido(sidoName) : Promise.resolve(null),
+      areaNo ? fetchUvByArea(areaNo) : Promise.resolve(null),
     ])
 
     // [진단] allSettled 는 실패를 조용히 넘기므로 원인이 보이지 않는다.
     //        어떤 API 가 왜 실패했는지 콘솔에 남긴다.
     if (dustResult.status === 'rejected') {
-      console.warn(
-        '[미세먼지 실패]',
-        region.sidoName,
-        dustResult.reason?.message ?? dustResult.reason,
-      )
+      console.warn('[미세먼지 실패]', sidoName, dustResult.reason?.message ?? dustResult.reason)
     }
     if (uvResult.status === 'rejected') {
-      console.warn('[자외선 실패]', region.areaNo, uvResult.reason?.message ?? uvResult.reason)
+      console.warn('[자외선 실패]', areaNo, uvResult.reason?.message ?? uvResult.reason)
     }
 
     const air = {
