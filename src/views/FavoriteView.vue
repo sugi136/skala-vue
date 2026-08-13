@@ -216,7 +216,7 @@ const goDetail = (city) => {
 /* 카드 목록 — 폭에 따라 열 수가 자동으로 늘어난다 */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
 }
 

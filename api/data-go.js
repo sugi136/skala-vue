@@ -20,6 +20,14 @@
 
 const TARGET_ORIGIN = 'https://apis.data.go.kr'
 
+// --------------------------------------------
+// [주의] Vercel 무료 플랜의 함수 실행 제한은 기본 10초다.
+//        공공데이터포털은 그보다 오래 걸리는 경우가 있어 늘려둔다.
+// --------------------------------------------
+export const config = {
+  maxDuration: 30,
+}
+
 export default async function handler(request, response) {
   // --------------------------------------------
   // 1. 요청 경로와 쿼리 분리

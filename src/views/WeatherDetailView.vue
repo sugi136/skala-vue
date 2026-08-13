@@ -15,6 +15,7 @@ import BaseDashboardCard from '@/components/exercise/BaseDashboardCard.vue'
 import WeatherAlert from '@/components/exercise/WeatherAlert.vue'
 import HourlyStrip from '@/components/exercise/HourlyStrip.vue'
 import ForecastStrip from '@/components/exercise/ForecastStrip.vue'
+import SunArc from '@/components/exercise/SunArc.vue'
 
 import { useConfigStore } from '@/stores/configStore.js'
 import { useWeatherStore } from '@/stores/weatherStore.js'
@@ -103,9 +104,15 @@ const detailItems = computed(() => {
     { id: 'd3', icon: '🍃', label: '바람', value: `${d.windSpeed} m/s`, sub: d.windDir },
     { id: 'd4', icon: '☁️', label: '구름량', value: `${d.clouds}%` },
     { id: 'd5', icon: '🔭', label: '가시거리', value: `${d.visibility} km` },
-    { id: 'd6', icon: '🎈', label: '기압', value: `${d.pressure} hPa` },
-    { id: 'd7', icon: '🌅', label: '일출', value: d.sunrise },
-    { id: 'd8', icon: '🌇', label: '일몰', value: d.sunset },
+    {
+      id: 'd6',
+      icon: '🎈',
+      label: '기압',
+      // [단위] 1 atm = 1013.25 hPa (표준대기압)
+      //        일상적인 값은 1 근처라 소수 셋째 자리까지 표시한다
+      value: `${(d.pressure / 1013.25).toFixed(3)} atm`,
+      sub: `${d.pressure} hPa`,
+    },
     // 강수량은 비가 올 때만 응답에 포함되므로 없으면 0 으로 표시된다
     { id: 'd9', icon: '☔', label: '강수량', value: `${d.rain1h} mm`, sub: '최근 1시간' },
     // 아래는 공공데이터포털 데이터.
@@ -246,6 +253,9 @@ const goBack = () => {
            상세 페이지에서도 그대로 쓸 수 있다. 컴포넌트 분리의 효과. -->
       <BaseDashboardCard title="상세 기상관측 정보" icon="📡">
         <div class="detail-grid">
+          <!-- 일출·일몰 — 두 칸을 차지하는 반원 궤도 그래픽 -->
+          <SunArc class="sun-cell" :sunrise="detail.sunrise" :sunset="detail.sunset" />
+
           <div v-for="item in detailItems" :key="item.id" class="detail-item">
             <span class="item-icon">{{ item.icon }}</span>
             <p class="item-label">{{ item.label }}</p>
@@ -429,6 +439,17 @@ const goBack = () => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
+}
+
+/* 일출·일몰 그래픽은 두 칸을 차지한다 */
+.sun-cell {
+  grid-column: span 2;
+}
+
+@media (max-width: 520px) {
+  .sun-cell {
+    grid-column: span 2;
+  }
 }
 
 .detail-item {

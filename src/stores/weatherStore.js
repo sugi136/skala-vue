@@ -237,6 +237,19 @@ export const useWeatherStore = defineStore('weather', () => {
       fetchUvByArea(region.areaNo),
     ])
 
+    // [진단] allSettled 는 실패를 조용히 넘기므로 원인이 보이지 않는다.
+    //        어떤 API 가 왜 실패했는지 콘솔에 남긴다.
+    if (dustResult.status === 'rejected') {
+      console.warn(
+        '[미세먼지 실패]',
+        region.sidoName,
+        dustResult.reason?.message ?? dustResult.reason,
+      )
+    }
+    if (uvResult.status === 'rejected') {
+      console.warn('[자외선 실패]', region.areaNo, uvResult.reason?.message ?? uvResult.reason)
+    }
+
     const air = {
       dust: dustResult.status === 'fulfilled' ? dustResult.value : null,
       uv: uvResult.status === 'fulfilled' ? uvResult.value : null,

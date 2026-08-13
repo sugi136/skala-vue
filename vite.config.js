@@ -40,6 +40,11 @@ export default defineConfig(({ mode }) => {
           target: 'https://apis.data.go.kr',
           changeOrigin: true,
           secure: true,
+          // [주의] 공공데이터포털은 응답이 느려 기본 타임아웃으로는 끊긴다.
+          //        프록시가 먼저 포기하면 504 가 발생하므로,
+          //        axios 의 timeout 보다 길게 잡아야 한다.
+          timeout: 30000,
+          proxyTimeout: 30000,
           rewrite: (path) => {
             const url = new URL(path, 'http://localhost')
             const params = url.searchParams

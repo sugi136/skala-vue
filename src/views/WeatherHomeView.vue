@@ -191,6 +191,8 @@ const summaryList = computed(() => {
 // [computed] 선택 도시 및 날씨별 헤더 테마
 // [주의] selectedCityId(ref, id 문자열)와 selectedCity(computed, 도시 객체)는 다른 변수다.
 // --------------------------------------------
+const selectedCity = computed(() => cities.value.find((item) => item.id === selectedCityId.value))
+
 const headerTheme = computed(() => {
   // store 에서 테마 기능을 껐으면 항상 기본값
   if (!configStore.useWeatherTheme) return 'clear'
@@ -389,35 +391,42 @@ watchEffect(() => {
         show-icon
       />
 
-      <BaseDashboardCard title="지역별 날씨 현황" icon="🏙️">
-        <!-- [Element Plus] el-skeleton — 로딩 중 실제 레이아웃과 비슷한 뼈대를 보여준다.
-             "불러오는 중" 텍스트보다 화면이 덜 튀어 체감 속도가 좋아진다. -->
-        <el-skeleton v-if="isLoading" :rows="4" animated />
+      <!-- 지역별 날씨 — 평소에는 지도, 검색 중에는 카드 목록을 보여준다.
+           [설계] 검색으로 추가한 해외 도시는 좌표가 지도 범위 밖이라
+                  지도에 표시할 수 없다. 검색 중에는 목록으로 전환한다. -->
+      <BaseDashboardCard title="전국 날씨 지도" icon="🗺️">
+        <el-skeleton v-if="isLoading" :rows="6" animated />
 
-        <!-- 화면이 넓어지면 카드가 2열, 3열로 자동 배치된다 -->
-        <div v-else class="card-grid">
-          <WeatherCard
-            v-for="item in filteredWeatherList"
-            :key="item.id"
-            :city="item"
-            :is-selected="item.id === selectedCityId"
-            @select-card="handleSelectCard"
-            @click-detail="handleClickDetail"
-          />
-        </div>
+        <!-- 검색 중 — 카드 목록 -->
+        <template v-else-if="searchQuery">
+          <div class="card-grid">
+            <WeatherCard
+              v-for="item in filteredWeatherList"
+              :key="item.id"
+              :city="item"
+              :is-selected="item.id === selectedCityId"
+              @select-card="handleSelectCard"
+              @click-detail="handleClickDetail"
+            />
+          </div>
 
-        <p v-if="!isLoading && filteredWeatherList.length === 0" class="empty-message">
-          검색 결과와 일치하는 지역이 없습니다.
-        </p>
+          <p v-if="filteredWeatherList.length === 0" class="empty-message">
+            검색 결과와 일치하는 지역이 없습니다.
+          </p>
+        </template>
+
+        <!-- 평소 — 지도 -->
+        <KoreaMap
+          v-else
+          :cities="cities"
+          :selected-id="selectedCityId"
+          @select-city="handleSelectCard"
+          @click-detail="handleClickDetail"
+        />
       </BaseDashboardCard>
 
       <BaseDashboardCard title="오늘의 요약" icon="📋">
         <SummaryPanel :items="summaryList" />
-      </BaseDashboardCard>
-
-      <!-- 전국 지도 — 좌표를 SVG 에 투영해 기온을 색으로 표시 -->
-      <BaseDashboardCard title="전국 기온 지도" icon="🗺️" class="full-width">
-        <KoreaMap :cities="cities" :selected-id="selectedCityId" @select-city="handleSelectCard" />
       </BaseDashboardCard>
 
       <!-- 시간대별 예보 — 좌우 컬럼을 가로질러 전체 폭 사용 -->
@@ -569,7 +578,7 @@ watchEffect(() => {
    카드 하나가 340px 아래로 줄어들 것 같으면 열을 줄인다. */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
 }
 

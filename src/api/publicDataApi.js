@@ -20,26 +20,48 @@ import axios from 'axios'
 
 const publicClient = axios.create({
   baseURL: '/api/data-go',
-  timeout: 10000,
+  // 공공데이터포털은 OpenWeather 보다 응답이 느리다.
+  // 측정소가 많은 시도는 10초를 넘기는 경우가 있다.
+  timeout: 25000,
 })
 
 /**
  * 프록시를 통해 공공데이터포털에 요청한다.
+ *
+ * [재시도] 공공데이터포털은 첫 요청이 타임아웃(504)으로 실패하고
+ *   두 번째 요청은 성공하는 경우가 잦다. 서버가 콜드 스타트 상태이거나
+ *   순간적으로 부하가 걸린 것이므로, 한 번 더 시도하면 대부분 해결된다.
+ *
  * @param {string} path - 실제 엔드포인트 (예: '/1360000/...')
  * @param {object} params - 쿼리 파라미터
+ * @param {number} retry - 남은 재시도 횟수
  */
-const requestPublicData = async (path, params) => {
-  const { data } = await publicClient.get('', {
-    params: {
-      path,
-      // 기본 응답이 XML 이므로 JSON 을 명시한다.
-      // 서비스마다 파라미터 이름이 dataType / returnType 으로 다르다
-      dataType: 'JSON',
-      returnType: 'json',
-      ...params,
-    },
-  })
-  return data
+const requestPublicData = async (path, params, retry = 1) => {
+  try {
+    const { data } = await publicClient.get('', {
+      params: {
+        path,
+        // 기본 응답이 XML 이므로 JSON 을 명시한다.
+        // 서비스마다 파라미터 이름이 dataType / returnType 으로 다르다
+        dataType: 'JSON',
+        returnType: 'json',
+        ...params,
+      },
+    })
+    return data
+  } catch (error) {
+    const status = error.response?.status
+    const isTimeout = status === 504 || status === 408 || error.code === 'ECONNABORTED'
+
+    if (retry > 0 && isTimeout) {
+      console.info('[publicDataApi] 응답 지연으로 재시도합니다.', path)
+      // 잠깐 쉬었다가 다시 시도한다
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      return requestPublicData(path, params, retry - 1)
+    }
+
+    throw error
+  }
 }
 
 // --------------------------------------------
@@ -50,16 +72,70 @@ const requestPublicData = async (path, params) => {
 // --------------------------------------------
 const GRADE_LABEL = { 1: '좋음', 2: '보통', 3: '나쁨', 4: '매우나쁨' }
 
-export const fetchDustBySido = async (sidoName) => {
-  const data = await requestPublicData('/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty', {
-    sidoName,
-    numOfRows: 100,
-    pageNo: 1,
-    ver: '1.3',
-  })
+// --------------------------------------------
+// [캐시] 에어코리아는 응답이 느리고 자주 타임아웃된다.
+//   측정값은 1시간 단위로 갱신되므로, 한 번 받은 값을 그 시간 동안 재사용한다.
+//   덕분에 재방문·새로고침 시 API 를 다시 부르지 않아
+//   실패 확률과 대기 시간이 크게 줄어든다.
+// --------------------------------------------
+const DUST_CACHE_KEY = 'weather-dust-cache'
 
-  const items = data?.response?.body?.items ?? []
-  if (items.length === 0) return null
+// 현재 시각을 'YYYYMMDDHH' 로 만들어 캐시 유효 기간의 기준으로 삼는다
+const currentHourKey = () => {
+  const now = new Date()
+  return `${now.getFullYear()}${now.getMonth()}${now.getDate()}${now.getHours()}`
+}
+
+const readDustCache = (sidoName) => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DUST_CACHE_KEY) ?? '{}')
+    const entry = saved[sidoName]
+    // 시간이 바뀌었으면 폐기한다
+    return entry?.hour === currentHourKey() ? entry.value : null
+  } catch {
+    return null
+  }
+}
+
+const writeDustCache = (sidoName, value) => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DUST_CACHE_KEY) ?? '{}')
+    saved[sidoName] = { hour: currentHourKey(), value }
+    localStorage.setItem(DUST_CACHE_KEY, JSON.stringify(saved))
+  } catch {
+    // 저장 실패는 무시한다. 캐시는 부가 기능이므로 앱이 멈추면 안 된다
+  }
+}
+
+export const fetchDustBySido = async (sidoName) => {
+  // 같은 시간대에 이미 받아둔 값이 있으면 그대로 쓴다
+  const cached = readDustCache(sidoName)
+  if (cached) return cached
+
+  const data = await requestPublicData(
+    '/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty',
+    // [성능] numOfRows 를 크게 잡으면 응답이 급격히 느려진다.
+    //        평균값 대표치를 내는 용도이므로 5개면 충분하다.
+    //        ver 을 생략하면 PM2.5 가 빠지는 대신 응답이 빨라진다.
+    { sidoName, numOfRows: 5, pageNo: 1, ver: '1.3' },
+  )
+
+  // [진단] 공공데이터포털은 오류도 200 으로 돌려주는 경우가 있다.
+  //        header.resultCode 를 확인해야 "값이 없음"과 "인증 실패"를 구분할 수 있다.
+  const header = data?.response?.header
+  if (header && header.resultCode !== '00') {
+    console.warn('[미세먼지]', header.resultCode, header.resultMsg)
+    return null
+  }
+
+  // 응답이 배열이 아니라 { item: [...] } 로 감싸져 올 수도 있다
+  const raw = data?.response?.body?.items
+  const items = Array.isArray(raw) ? raw : (raw?.item ?? [])
+
+  if (items.length === 0) {
+    console.warn('[미세먼지] 측정 데이터가 비어 있습니다.', sidoName, data)
+    return null
+  }
 
   // [문법] filter 로 유효한 숫자만 남긴다.
   //        측정소가 점검 중이면 '-' 나 빈 문자열이 온다.
@@ -76,7 +152,7 @@ export const fetchDustBySido = async (sidoName) => {
   const pm10 = avg(pm10List)
   const pm25 = pm25List.length > 0 ? avg(pm25List) : null
 
-  return {
+  const result = {
     pm10,
     pm25,
     // 등급은 평균값으로 다시 판정한다 (측정소마다 등급이 달라서)
@@ -84,6 +160,9 @@ export const fetchDustBySido = async (sidoName) => {
     dataTime: items[0]?.dataTime ?? '',
     stationCount: pm10List.length,
   }
+
+  writeDustCache(sidoName, result)
+  return result
 }
 
 // 에어코리아 PM10 기준: 0~30 좋음 / 31~80 보통 / 81~150 나쁨 / 151~ 매우나쁨
@@ -139,6 +218,12 @@ export const fetchUvByArea = async (areaNo) => {
     numOfRows: 10,
     pageNo: 1,
   })
+
+  const header = data?.response?.header
+  if (header && header.resultCode !== '00') {
+    console.warn('[자외선]', header.resultCode, header.resultMsg)
+    return null
+  }
 
   const raw = data?.response?.body?.items?.item
   // [주의] 배열로 올 수도, 객체 하나로 올 수도 있다

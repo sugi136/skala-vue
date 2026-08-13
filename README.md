@@ -167,7 +167,6 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 - `computed` 안에서 다른 `computed`를 참조할 수 있으며, 의존성이 자동으로 연결됨 (`summaryList` → `hottestCity` → `temps` → `weatherList`)
 - 한글 검색은 문자열 단위 비교만으로는 초성 검색이 불가능하며, 유니코드 연산이 필요함
 
-
 ## 2026-08-12 — 4장 Hands on : Weather Component
 
 **파일:** `src/components/exercise/` 내 5개 컴포넌트
@@ -177,25 +176,25 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 
 ### 컴포넌트 구성
 
-| 파일 | 역할 | 아는 것 / 모르는 것 |
-|---|---|---|
-| `WeatherParent.vue` | 모든 반응형 상태 보유, 자식 조립 | 전부 |
-| `BaseDashboardCard.vue` | 패널 껍데기 (제목 + slot) | 날씨를 전혀 모름 |
-| `SearchBar.vue` | 검색 입력창 + 상태 안내 | 무엇을 검색하는지 모름 |
-| `WeatherCard.vue` | 도시 1개의 날씨 카드 | 다른 도시가 몇 개인지 모름 |
-| `SummaryPanel.vue` | 오늘의 요약 목록 | 값이 어떻게 계산됐는지 모름 |
+| 파일                    | 역할                             | 아는 것 / 모르는 것         |
+| ----------------------- | -------------------------------- | --------------------------- |
+| `WeatherParent.vue`     | 모든 반응형 상태 보유, 자식 조립 | 전부                        |
+| `BaseDashboardCard.vue` | 패널 껍데기 (제목 + slot)        | 날씨를 전혀 모름            |
+| `SearchBar.vue`         | 검색 입력창 + 상태 안내          | 무엇을 검색하는지 모름      |
+| `WeatherCard.vue`       | 도시 1개의 날씨 카드             | 다른 도시가 몇 개인지 모름  |
+| `SummaryPanel.vue`      | 오늘의 요약 목록                 | 값이 어떻게 계산됐는지 모름 |
 
 분리 기준 : **각 컴포넌트가 알아야 할 최소한의 정보**
 `BaseDashboardCard`가 날씨를 전혀 모르기 때문에, 이후 상세 페이지와 즐겨찾기 페이지에서도 그대로 재사용 가능
 
 ### Props / Emits 설계
 
-| 컴포넌트 | Props (부모 → 자식) | Emits (자식 → 부모) |
-|---|---|---|
-| `BaseDashboardCard` | `title`, `icon` | — |
-| `SearchBar` | `query`, `resultCount` | `update-query` |
-| `WeatherCard` | `city`, `isSelected` | `select-card`, `click-detail` |
-| `SummaryPanel` | `items` | — |
+| 컴포넌트            | Props (부모 → 자식)    | Emits (자식 → 부모)           |
+| ------------------- | ---------------------- | ----------------------------- |
+| `BaseDashboardCard` | `title`, `icon`        | —                             |
+| `SearchBar`         | `query`, `resultCount` | `update-query`                |
+| `WeatherCard`       | `city`, `isSelected`   | `select-card`, `click-detail` |
+| `SummaryPanel`      | `items`                | —                             |
 
 자식은 상태를 직접 변경하지 않음. `emit`으로 "이런 일이 있었다"고 알리기만 하고,
 `searchQuery.value = ...` 같은 실제 변경은 전부 `WeatherParent`의 핸들러에서 수행
@@ -210,15 +209,15 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 
 ### 적용한 4장 문법
 
-| 문법 | 적용 위치 |
-|---|---|
-| `defineProps` | 4개 자식 컴포넌트 전부 (import 없이 사용하는 컴파일러 매크로) |
-| `defineEmits` | `SearchBar`, `WeatherCard` |
-| props 타입 검증 | `type`, `required`, `default` 옵션 지정 |
-| `<slot>` + fallback | `BaseDashboardCard` — 부모가 내용을 안 넣으면 기본 문구 표시 |
-| 네이밍 규칙 | 자식은 camelCase(`isSelected`), 부모 태그는 kebab-case(`:is-selected`) |
-| 지역 등록 | 사용하는 곳에서 `import` 후 태그로 배치 |
-| `<style scoped>` | 각 컴포넌트가 자기 스타일을 소유 |
+| 문법                | 적용 위치                                                              |
+| ------------------- | ---------------------------------------------------------------------- |
+| `defineProps`       | 4개 자식 컴포넌트 전부 (import 없이 사용하는 컴파일러 매크로)          |
+| `defineEmits`       | `SearchBar`, `WeatherCard`                                             |
+| props 타입 검증     | `type`, `required`, `default` 옵션 지정                                |
+| `<slot>` + fallback | `BaseDashboardCard` — 부모가 내용을 안 넣으면 기본 문구 표시           |
+| 네이밍 규칙         | 자식은 camelCase(`isSelected`), 부모 태그는 kebab-case(`:is-selected`) |
+| 지역 등록           | 사용하는 곳에서 `import` 후 태그로 배치                                |
+| `<style scoped>`    | 각 컴포넌트가 자기 스타일을 소유                                       |
 
 ### Customization
 
@@ -249,32 +248,32 @@ API 연동 없이 하드코딩 데이터로 날씨 대시보드의 화면 구조
 
 ### 라우트 구성
 
-| 경로 | 이름 | 컴포넌트 | 비고 |
-|---|---|---|---|
-| `/` | `weather-home` | `WeatherHomeView` | 메인 대시보드 |
-| `/weather/:cityId` | `weather-detail` | `WeatherDetailView` | 동적 경로 매칭 |
-| `/about` | `weather-about` | `WeatherAboutView` | 정적 소개 페이지 |
-| `/favorites` | `weather-favorites` | `FavoriteView` | 추가 view (요구사항 6) |
-| `/:pathMatch(.*)*` | `not-found` | `NotFoundView` | Catch-all |
+| 경로               | 이름                | 컴포넌트            | 비고                   |
+| ------------------ | ------------------- | ------------------- | ---------------------- |
+| `/`                | `weather-home`      | `WeatherHomeView`   | 메인 대시보드          |
+| `/weather/:cityId` | `weather-detail`    | `WeatherDetailView` | 동적 경로 매칭         |
+| `/about`           | `weather-about`     | `WeatherAboutView`  | 정적 소개 페이지       |
+| `/favorites`       | `weather-favorites` | `FavoriteView`      | 추가 view (요구사항 6) |
+| `/:pathMatch(.*)*` | `not-found`         | `NotFoundView`      | Catch-all              |
 
 전 경로에 동적 import를 적용해 Lazy Loading이 동작하도록 했고,
 Catch-all 규칙은 반드시 배열 마지막에 배치. 위에 두면 모든 경로를 먼저 낚아채기 때문.
 
 ### 적용한 5장 문법
 
-| 문법 | 적용 위치 |
-|---|---|
-| `createRouter` / `createWebHistory` | `router/index.js` |
-| Lazy Loading | 전 라우트를 `() => import(...)` 형태로 정의 |
-| Catch-all Route | `/:pathMatch(.*)*` → `NotFoundView` |
-| `<RouterLink>` | App.vue 내비게이션 바, 각 페이지의 홈 복귀 링크 |
-| `<RouterView>` | App.vue 메인 콘텐츠 영역 |
-| Dynamic Route Matching | `/weather/:cityId` — `route.params.cityId`로 수신 |
-| `useRoute` | 상세 페이지의 `params`, 404 페이지의 `fullPath`, 즐겨찾기의 `query` |
-| `useRouter` | `push`(상세 이동), `replace`(정렬 변경), `back`(뒤로) |
-| Query String | `/favorites?sort=temp` |
-| Navigation Guard | `router.afterEach`로 페이지별 탭 제목 변경 |
-| `onMounted` | 상세 페이지에서 Mount 시점에 도시 데이터 조회 |
+| 문법                                | 적용 위치                                                           |
+| ----------------------------------- | ------------------------------------------------------------------- |
+| `createRouter` / `createWebHistory` | `router/index.js`                                                   |
+| Lazy Loading                        | 전 라우트를 `() => import(...)` 형태로 정의                         |
+| Catch-all Route                     | `/:pathMatch(.*)*` → `NotFoundView`                                 |
+| `<RouterLink>`                      | App.vue 내비게이션 바, 각 페이지의 홈 복귀 링크                     |
+| `<RouterView>`                      | App.vue 메인 콘텐츠 영역                                            |
+| Dynamic Route Matching              | `/weather/:cityId` — `route.params.cityId`로 수신                   |
+| `useRoute`                          | 상세 페이지의 `params`, 404 페이지의 `fullPath`, 즐겨찾기의 `query` |
+| `useRouter`                         | `push`(상세 이동), `replace`(정렬 변경), `back`(뒤로)               |
+| Query String                        | `/favorites?sort=temp`                                              |
+| Navigation Guard                    | `router.afterEach`로 페이지별 탭 제목 변경                          |
+| `onMounted`                         | 상세 페이지에서 Mount 시점에 도시 데이터 조회                       |
 
 ### Customization
 
@@ -289,10 +288,9 @@ Catch-all 규칙은 반드시 배열 마지막에 배치. 위에 두면 모든 �
 - **`scrollBehavior` 설정** — SPA는 페이지를 교체할 뿐 새로고침이 아니므로 스크롤 위치가 그대로 남음. `scrollBehavior() { return { top: 0 } }`를 추가해 보정
 - **`router.afterEach`로 탭 제목 변경** — SPA는 `index.html` 하나만 쓰므로 기본 상태에서는 모든 페이지의 탭 제목이 같음. 라우트마다 `meta.title`을 두고 이동 완료 후 `document.title`에 반영
   <img width="514" height="266" alt="스크린샷 2026-08-12 오후 4 47 47" src="https://github.com/user-attachments/assets/5aa067c1-b304-4d6c-b078-58922c3a18c2" />
-<img width="492" height="237" alt="스크린샷 2026-08-12 오후 4 46 10" src="https://github.com/user-attachments/assets/76032e5f-7b49-460c-955a-1f2d2cd60de6" />
-<img width="905" height="426" alt="스크린샷 2026-08-12 오후 4 46 01" src="https://github.com/user-attachments/assets/e77b264a-3d03-4898-b2d3-37d8f1ec65d3" />
-<img width="526" height="276" alt="스크린샷 2026-08-12 오후 4 48 09" src="https://github.com/user-attachments/assets/b0fbc48b-c2c0-4cb0-a501-8df4ceaa71af" />
-
+  <img width="492" height="237" alt="스크린샷 2026-08-12 오후 4 46 10" src="https://github.com/user-attachments/assets/76032e5f-7b49-460c-955a-1f2d2cd60de6" />
+  <img width="905" height="426" alt="스크린샷 2026-08-12 오후 4 46 01" src="https://github.com/user-attachments/assets/e77b264a-3d03-4898-b2d3-37d8f1ec65d3" />
+  <img width="526" height="276" alt="스크린샷 2026-08-12 오후 4 48 09" src="https://github.com/user-attachments/assets/b0fbc48b-c2c0-4cb0-a501-8df4ceaa71af" />
 
 - **`router-link-exact-active` 활용** — Vue Router가 현재 경로와 일치하는 링크에 자동으로 붙이는 클래스를 이용해, 별도 로직 없이 CSS만으로 현재 메뉴를 강조
   <img width="552" height="245" alt="스크린샷 2026-08-12 오후 4 48 39" src="https://github.com/user-attachments/assets/bede2643-7784-433a-9f41-a4e757a07921" />
@@ -336,39 +334,39 @@ Catch-all 규칙은 반드시 배열 마지막에 배치. 위에 두면 모든 �
 
 **`configStore.js` — 단위 설정 (과제 지정)**
 
-| 구분 | 이름 | 역할 |
-|---|---|---|
-| state | `unit` | `celsius` / `fahrenheit` (초기값 celsius) |
-| state | `useWeatherTheme` | 날씨별 화면 테마 사용 여부 |
-| getters | `unitSymbol` | 현재 단위 기호 (℃ / ℉) |
-| getters | `unitLabel` | 단위의 한글 표기 (섭씨 / 화씨) |
-| getters | `isFahrenheit` | 화씨 모드 여부 |
-| getters | `hotThreshold` | 현재 단위로 환산한 더움 기준값 (25℃ ↔ 77℉) |
-| getters | `hotLabel` / `coolLabel` | 배지에 표시할 문구 전체 |
-| actions | `convertTemp` | 섭씨 원본값을 현재 단위로 변환 |
-| actions | `toggleUnit` / `setUnit` | 단위 토글 / 직접 지정 |
-| actions | `toggleTheme` | 테마 사용 여부 토글 |
+| 구분    | 이름                     | 역할                                       |
+| ------- | ------------------------ | ------------------------------------------ |
+| state   | `unit`                   | `celsius` / `fahrenheit` (초기값 celsius)  |
+| state   | `useWeatherTheme`        | 날씨별 화면 테마 사용 여부                 |
+| getters | `unitSymbol`             | 현재 단위 기호 (℃ / ℉)                     |
+| getters | `unitLabel`              | 단위의 한글 표기 (섭씨 / 화씨)             |
+| getters | `isFahrenheit`           | 화씨 모드 여부                             |
+| getters | `hotThreshold`           | 현재 단위로 환산한 더움 기준값 (25℃ ↔ 77℉) |
+| getters | `hotLabel` / `coolLabel` | 배지에 표시할 문구 전체                    |
+| actions | `convertTemp`            | 섭씨 원본값을 현재 단위로 변환             |
+| actions | `toggleUnit` / `setUnit` | 단위 토글 / 직접 지정                      |
+| actions | `toggleTheme`            | 테마 사용 여부 토글                        |
 
 **`favoriteStore.js` — 즐겨찾기 (요구사항 4, 추가 Store)**
 
-| 구분 | 이름 | 역할 |
-|---|---|---|
-| state | `favoriteIds` | 즐겨찾기한 도시 id 목록 |
-| getters | `favoriteCount` / `hasFavorite` | 개수 / 존재 여부 |
-| getters | `isFavorite` | 특정 id가 즐겨찾기인지 판별 (인자를 받는 형태) |
-| actions | `toggleFavorite` / `removeFavorite` / `clearAll` | 추가·제거·전체 삭제 |
+| 구분    | 이름                                             | 역할                                           |
+| ------- | ------------------------------------------------ | ---------------------------------------------- |
+| state   | `favoriteIds`                                    | 즐겨찾기한 도시 id 목록                        |
+| getters | `favoriteCount` / `hasFavorite`                  | 개수 / 존재 여부                               |
+| getters | `isFavorite`                                     | 특정 id가 즐겨찾기인지 판별 (인자를 받는 형태) |
+| actions | `toggleFavorite` / `removeFavorite` / `clearAll` | 추가·제거·전체 삭제                            |
 
 ### 적용한 6장 문법
 
-| 문법 | 적용 위치 |
-|---|---|
-| `defineStore(id, setup)` | 두 store 모두 Composition API 방식으로 작성 |
-| state = `ref()` | `unit`, `favoriteIds` 등 |
-| getters = `computed()` | `unitSymbol`, `favoriteCount` 등 |
-| actions = 일반 함수 | `toggleUnit`, `toggleFavorite` 등 |
-| `storeToRefs` | `UnitToggler`, `FavoriteView`에서 state·getters 구조분해 시 |
-| actions 직접 구조분해 | 함수는 반응성과 무관하므로 `storeToRefs` 없이 꺼냄 |
-| 인자를 받는 getter | `isFavorite`를 함수를 반환하는 `computed`로 구현 |
+| 문법                     | 적용 위치                                                   |
+| ------------------------ | ----------------------------------------------------------- |
+| `defineStore(id, setup)` | 두 store 모두 Composition API 방식으로 작성                 |
+| state = `ref()`          | `unit`, `favoriteIds` 등                                    |
+| getters = `computed()`   | `unitSymbol`, `favoriteCount` 등                            |
+| actions = 일반 함수      | `toggleUnit`, `toggleFavorite` 등                           |
+| `storeToRefs`            | `UnitToggler`, `FavoriteView`에서 state·getters 구조분해 시 |
+| actions 직접 구조분해    | 함수는 반응성과 무관하므로 `storeToRefs` 없이 꺼냄          |
+| 인자를 받는 getter       | `isFavorite`를 함수를 반환하는 `computed`로 구현            |
 
 ### Customization
 
@@ -379,11 +377,11 @@ Catch-all 규칙은 반드시 배열 마지막에 배치. 위에 두면 모든 �
 - **`convertTemp`를 store의 action으로 구현** — 과제 참고사항에 "메인/상세에 유사한 코드가 중복됨 → Composable로 해결 가능(범위 제외)"이라고 명시되어 있어, Composable 대신 store에 변환 함수를 두어 각 컴포넌트가 `configStore.convertTemp(temp)` 한 줄만 쓰도록 해결
 - **판정 기준과 표시 단위 분리** — 더움/선선함 판정은 항상 섭씨 원본으로 수행. 화씨로 변환한 값(82 등)을 25와 비교하면 모든 도시가 "더움"이 되기 때문. 표시 문구만 `hotThreshold`로 환산하여 ℃일 때는 "25℃ 이상", ℉일 때는 "77℉ 이상"으로 자동 전환
   <img width="522" height="169" alt="스크린샷 2026-08-12 오후 4 52 03" src="https://github.com/user-attachments/assets/643d864f-a7bd-4bb3-84a0-df2ea03808a0" />
-<img width="545" height="216" alt="스크린샷 2026-08-12 오후 4 51 56" src="https://github.com/user-attachments/assets/b39f8d1f-9f91-4c84-bc95-c66df07415f7" />
+  <img width="545" height="216" alt="스크린샷 2026-08-12 오후 4 51 56" src="https://github.com/user-attachments/assets/b39f8d1f-9f91-4c84-bc95-c66df07415f7" />
 
 - **배지 문구를 store에서 조립** — 카드와 요약 패널이 같은 문구를 사용하므로, 각 컴포넌트에서 문자열을 조립하지 않고 `hotLabel`·`coolLabel` getter로 완성해 내려줌
 - **`localStorage` 연동** — Pinia store는 메모리 기반이라 새로고침 시 상태가 초기화됨. 즐겨찾기 목록과 단위 설정을 `watch`로 감시해 자동 저장·복원하도록 구현. 각 action마다 저장 코드를 넣는 대신 한 곳에서 처리해 누락 가능성을 없앰. 저장 값 손상이나 시크릿 모드 등 실패 상황에 대비해 `try/catch`로 감싸고, 실패해도 앱이 멈추지 않도록 함
-<img width="1052" height="497" alt="스크린샷 2026-08-12 오후 4 54 45" src="https://github.com/user-attachments/assets/2b3c350b-f7d5-4966-b9f3-d22baefb05c6" />
+  <img width="1052" height="497" alt="스크린샷 2026-08-12 오후 4 54 45" src="https://github.com/user-attachments/assets/2b3c350b-f7d5-4966-b9f3-d22baefb05c6" />
 
 - **`FavoriteView`의 카드 클릭 동작 변경** — 5장에서는 카드 클릭이 즐겨찾기 해제였으나, 별 아이콘이 생겼으므로 카드 클릭은 상세 페이지 이동으로 변경. 해제는 별 아이콘이 전담
 - **시간대별 예보(24시간) 추가** — `/forecast` 응답이 3시간 간격이므로 앞 8개를 그대로 사용하면 되는 구조. 각 시간의 강수확률(`pop`)을 함께 표시하되, 0%인 시간은 `—`로 처리해 화면이 지저분해지지 않도록 함
@@ -392,14 +390,13 @@ Catch-all 규칙은 반드시 배열 마지막에 배치. 위에 두면 모든 �
   <img width="1432" height="438" alt="스크린샷 2026-08-12 오후 4 55 37" src="https://github.com/user-attachments/assets/26045f22-c206-4e2f-b3c5-1c53fa423578" />
 
 - **지수 구간별 색상 강조** — 자외선지수(기상청 기준 3미만 낮음 / 3~5 보통 / 6~7 높음 / 8이상 매우높음)와 미세먼지(에어코리아 PM10 기준 0~30 좋음 / 31~80 보통 / 81이상 나쁨)를 구간에 따라 초록·주황·빨강으로 표시
-<img width="176" height="198" alt="스크린샷 2026-08-12 오후 4 56 05" src="https://github.com/user-attachments/assets/db85b484-e0b6-4a3e-8265-9482bba8a141" />
-<img width="175" height="183" alt="스크린샷 2026-08-12 오후 4 55 54" src="https://github.com/user-attachments/assets/489a8ada-e8ea-4e87-baec-8f5f9ab30348" />
-<img width="150" height="196" alt="스크린샷 2026-08-12 오후 4 56 19" src="https://github.com/user-attachments/assets/1b9c0cad-f259-42e2-8b01-8d62f05a4fa8" />
+  <img width="176" height="198" alt="스크린샷 2026-08-12 오후 4 56 05" src="https://github.com/user-attachments/assets/db85b484-e0b6-4a3e-8265-9482bba8a141" />
+  <img width="175" height="183" alt="스크린샷 2026-08-12 오후 4 55 54" src="https://github.com/user-attachments/assets/489a8ada-e8ea-4e87-baec-8f5f9ab30348" />
+  <img width="150" height="196" alt="스크린샷 2026-08-12 오후 4 56 19" src="https://github.com/user-attachments/assets/1b9c0cad-f259-42e2-8b01-8d62f05a4fa8" />
 
 - **기상특보 배너 추가** — `WeatherAlert.vue`를 만들어 상세 페이지 헤더 아래에 배치. 주의보(주황)와 경보(빨강)를 색으로 구분하고, 메인 카드에는 `⚠️ 특보` 배지만 표시해 카드가 복잡해지지 않도록 함. 특보는 평소에 없는 것이 정상이므로 데이터가 없는 도시는 키 자체를 두지 않고, 컴포넌트가 스스로 판단해 아무것도 렌더링하지 않도록 함
   <img width="1023" height="313" alt="스크린샷 2026-08-12 오후 4 56 44" src="https://github.com/user-attachments/assets/cffadca9-d471-42a3-8631-cda4efafe779" />
   <img width="1444" height="234" alt="스크린샷 2026-08-12 오후 4 56 57" src="https://github.com/user-attachments/assets/bd85f845-56d9-4074-b2c1-dc4c64cdb9be" />
-
 
 - **검색 매칭 규칙 통일** — 초성 검색은 `startsWith`, 일반 검색은 `includes`로 규칙이 달라 `산` 입력 시 `부산`이 검색되는 등 동작이 일관되지 않았음. 양쪽 모두 `startsWith`로 통일
 
@@ -424,3 +421,288 @@ Catch-all 규칙은 반드시 배열 마지막에 배치. 위에 두면 모든 �
 - store 파일에서 `export`를 빠뜨리거나 `return` 문에 함수를 담지 않으면 `does not provide an export named` / `is not a function` 오류가 발생함. Pinia는 `return`에 담은 것만 외부에 공개함
 - Vue Devtools의 Pinia 탭에서 두 store의 상태가 실시간으로 갱신되는 것을 확인
 - ℃/℉ 전환 시 대시보드 카드·요약 패널·시간대별 예보·5일 예보·상세 페이지의 온도가 동시에 바뀌고, 페이지를 이동했다 돌아와도 설정이 유지되는 것을 확인. 5장까지는 불가능했던 동작
+
+## 2026-08-13 — 7장 Hands on : Weather Axios
+
+**파일:** `src/api/weatherApi.js`, `publicDataApi.js`, `api/data-go.js`, `src/stores/weatherStore.js`, `src/data/regionList.js`
+
+목업 데이터를 실제 API 응답으로 전면 교체하고, 대상 지역을 전국 17개 광역시·도로 확장했습니다.
+
+### 요구사항 대조
+
+| 요구사항                               | 구현                                              |
+| -------------------------------------- | ------------------------------------------------- |
+| 1. OpenWeather로 실제 날씨 데이터 적용 | `/data/2.5/weather` — 17개 지역 현재 날씨         |
+| 2. OpenWeather 추가 API로 기능 확장    | `/data/2.5/forecast` — 시간대별(24h) · 5일 예보   |
+| 3. 기타 외부 API로 기능 확장           | 공공데이터포털 3종 — 자외선 · 미세먼지 · 기상특보 |
+
+### 연동한 API
+
+| 항목          | 엔드포인트                                   | 비고                                             |
+| ------------- | -------------------------------------------- | ------------------------------------------------ |
+| 현재 날씨     | OpenWeather `/weather`                       | 기온·체감·습도·바람·구름·가시거리·기압·일출/일몰 |
+| 시간대별 예보 | OpenWeather `/forecast`                      | 3시간 간격 앞 8개(24시간), 강수확률 포함         |
+| 5일 예보      | OpenWeather `/forecast`                      | 40개 항목을 날짜별로 묶어 최고·최저 산출         |
+| 현재 위치     | `navigator.geolocation` + `/weather?lat&lon` | 브라우저 내장 API                                |
+| 자외선지수    | 기상청 생활기상지수 조회서비스               | `getUVIdxV5`                                     |
+| 미세먼지      | 에어코리아 시도별 실시간 측정정보            | PM10 · PM2.5                                     |
+| 기상특보      | 기상청 기상특보 조회서비스                   | 전국 목록을 지역별로 필터링                      |
+
+### 구조
+
+```
+컴포넌트
+   ↓ (store 만 참조)
+weatherStore  ── 캐싱 · 상태 관리
+   ↓
+weatherApi.js / publicDataApi.js  ── axios 인스턴스 · 응답 변환
+   ↓
+OpenWeather / 공공데이터포털
+```
+
+**`weatherStore` 도입이 이번 단원의 가장 큰 구조 변화입니다.**
+이전에는 메인·상세·즐겨찾기 페이지가 각각 API를 호출해 같은 데이터를 중복 요청했습니다.
+지역이 17개로 늘어나면서 이 방식은 감당이 안 되어, store에 캐시를 두고 페이지들이 공유하도록 바꿨습니다.
+
+| 경로                             | 네트워크 요청     |
+| -------------------------------- | ----------------- |
+| 메인 → 부산 상세보기             | 0회 (캐시 사용)   |
+| URL로 `/weather/busan` 직접 접근 | 2회 (상세 + 예보) |
+| 즐겨찾기 페이지 (기본 지역)      | 0회               |
+
+### 적용한 7장 문법
+
+| 문법                                | 적용 위치                                                      |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `axios.create`                      | `baseURL` · `params`(appid, units, lang) · `timeout` 공통 설정 |
+| 응답 인터셉터                       | 401/404/429/타임아웃을 사용자용 메시지로 변환                  |
+| `async/await` + `try/catch/finally` | 모든 API 호출. `finally`에서 로딩 해제                         |
+| `Promise.all`                       | 상세 페이지의 현재 날씨 + 예보 병렬 조회                       |
+| `Promise.allSettled`                | 17개 지역 병렬 조회 — 일부 실패해도 나머지 표시                |
+| `onMounted`                         | DOM 부착 직후 초기 데이터 로드                                 |
+| 환경변수                            | `import.meta.env.VITE_*`                                       |
+
+### Customization
+
+- **전국 17개 광역시·도로 확장** — 도 단위는 도청소재지를 대표 도시로 사용. `regionList.js`에 `query`(API 조회용) / `enName` / `name`(한글 표시) / `sidoName`(에어코리아) / `areaNo`(기상청)를 함께 관리
+- **`query`에 국가코드 `,KR` 부착** — `Gwangju` 같은 도시명은 해외에도 존재해, 국가코드 없이 조회하면 엉뚱한 지역이 반환됨
+- **검색 API 연동** — 로컬 필터 결과가 0건일 때 "API에서 찾기" 버튼이 나타나 목록에 없는 도시를 추가. 추가된 도시는 세션 동안만 유지되며, 즐겨찾기에 등록하면 새로고침 후에도 남음
+- **현재 위치 기반 조회** — `navigator.geolocation`을 Promise로 감싸 `async/await`로 사용. 권한 거부·조회 실패는 정상적인 흐름으로 보고 조용히 기본 도시(서울)로 폴백하며, 사용자에게 에러를 노출하지 않음
+- **전국 날씨 지도** — API 응답의 좌표(`lat`/`lon`)를 SVG에 선형 투영. 지도 라이브러리 없이 구현했으며, 마커에 날씨 아이콘·기온·즐겨찾기 별을 표시하고 클릭 시 연결선과 함께 상세 카드를 띄움
+- **일출·일몰 반원 그래픽** — `SunArc.vue`. 현재 시각이 일출~일몰 구간에서 몇 %인지 계산해 반원 궤도 위 해의 위치로 표현. 지나온 구간은 실선, 남은 구간은 점선
+- **기압을 atm 단위로 표시** — 1 atm = 1013.25 hPa로 환산. 원본 hPa 값은 보조 텍스트로 병기
+- **강수확률 표시** — 시간대별·5일 예보에 `pop` 값을 백분율로 변환해 표시. 0%인 시간은 `—`로 처리해 화면이 지저분해지지 않도록 함
+
+### 설계 판단 기록
+
+- **응답 변환을 API 계층에서 처리** — `toCityData` / `toDetailData`가 API 응답 구조를 기존 목업과 같은 키(`name` / `temp` / `status`)로 매핑. 덕분에 `<template>`은 한 줄도 수정하지 않고 데이터 소스만 교체할 수 있었음. 2장에서 목업 키를 API 구조에 맞춰 설계해둔 것이 효과를 발휘
+- **`Promise.all` vs `allSettled` 구분** — 상세 페이지의 두 요청은 모두 필요하므로 `all`, 17개 지역 조회는 일부 실패를 허용해야 하므로 `allSettled`
+- **보조 정보는 화면을 막지 않음** — OpenWeather 데이터는 `await`로 기다리지만, 공공데이터포털은 `await` 없이 진행시켜 도착하는 대로 반영. 공공 API가 느리거나 실패해도 날씨는 정상 표시됨
+- **`headerTheme` 판정을 `includes`로 변경** — 목업의 `status`는 '맑음'/'비'로 딱 떨어졌으나, API의 `description`은 '온흐림', '실 비', '튼구름' 등 표현이 다양해 정확히 일치 비교로는 판정이 되지 않음
+- **에어코리아 응답 지연 대응** — 미세먼지 API는 타임아웃(504)이 잦다. `numOfRows`를 5로 축소, 재시도 로직, 시간 단위 `localStorage` 캐시(측정값이 1시간마다 갱신되므로)를 적용해 실패 확률을 낮춤. 그럼에도 실패하면 해당 항목만 `—`로 표시되고 나머지는 정상 동작
+
+### 배운 점 / 확인한 것
+
+- axios는 `fetch`와 달리 `.json()` 변환이 필요 없고, 4xx/5xx가 자동으로 `catch`로 들어옴. `fetch`는 404도 성공으로 취급해 `res.ok`를 직접 확인해야 함
+- `.env` 파일은 개발 서버 시작 시 한 번만 읽히므로, 수정 후 반드시 재시작해야 함
+- macOS는 파일명 대소문자를 구분하지 않아 `Hourlystrip.vue`로 커밋되어 있었음. 배포 환경(Linux)에서는 import 실패로 빌드가 깨지므로 `git mv`를 두 단계로 실행해 수정
+- 공공데이터포털은 오류도 HTTP 200으로 응답하는 경우가 있어, `header.resultCode`를 확인해야 "데이터 없음"과 "인증 실패"를 구분할 수 있음
+- 인증키는 인코딩/디코딩 두 종류가 제공되는데, axios가 자동으로 인코딩하므로 **디코딩 키**를 써야 함. 인코딩 키를 쓰면 이중 인코딩되어 인증에 실패
+
+---
+
+## 2026-08-13 — 8장 Hands on : Weather UI Library
+
+**라이브러리:** Element Plus 2.14 + `@element-plus/icons-vue`
+
+```js
+// main.js
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+import ko from 'element-plus/es/locale/lang/ko'
+
+app.use(ElementPlus, { locale: ko })
+```
+
+### 교체한 컴포넌트
+
+| 대상                      | Element Plus                    | 얻은 것                                          |
+| ------------------------- | ------------------------------- | ------------------------------------------------ |
+| 상세보기 · API 검색 버튼  | `el-button`                     | hover/active/disabled 상태, `loading` 속성       |
+| 단위 토글 · 즐겨찾기 정렬 | `el-radio-group`                | "여러 선택지 중 하나"라는 의미가 마크업에 드러남 |
+| 기상특보 배너 · API 에러  | `el-alert`                      | `type` 하나로 색상·아이콘·접근성 속성 일괄 적용  |
+| 특보 배지                 | `el-tag`                        | 배지 스타일을 직접 만들 필요 없음                |
+| 로딩 상태                 | `el-skeleton`                   | 텍스트 안내보다 레이아웃 변동이 적음             |
+| 검색 결과 알림            | `ElMessage`                     | 조작을 막지 않고 자동으로 사라지는 토스트        |
+| 즐겨찾기 별               | `el-icon` + `Star`/`StarFilled` | 이모지 대신 벡터 아이콘                          |
+
+### 의도적으로 교체하지 않은 것
+
+- **검색 입력창** — `el-input`은 한글 IME 조합이 끝나야 `@input`을 발생시킨다. `ㅅ`을 입력한 시점에는 이벤트가 오지 않아 초성 검색이 동작하지 않으므로, 조합 중에도 값을 받는 네이티브 `<input>`을 유지했다. **라이브러리의 편의 기능이 요구사항과 충돌하는 사례**
+- **카드 레이아웃 · 그라데이션 헤더 · 지도 · 예보 스트립** — `el-card`로 바꾸면 직접 설계한 날씨별 테마와 반응형 구조가 무너진다. 라이브러리로 대체할 이점이 없는 영역
+
+### 배운 점 / 확인한 것
+
+- `el-input`의 `@input`은 이벤트 객체가 아니라 값(문자열)을 넘긴다. 네이티브 `<input>`과 시그니처가 달라 `e.target.value`를 쓰면 `undefined`가 됨
+- `app.use(ElementPlus)`와 CSS import 중 하나라도 빠지면 `<el-*>` 태그가 일반 텍스트로 렌더링됨. 버튼 색이 사라지고 라디오가 붙어 나오는 증상이 모두 같은 원인이었음
+- `:deep()`를 써야 `scoped` 안에서 자식 컴포넌트 내부 요소의 스타일을 덮어쓸 수 있음
+- 라이브러리는 "전부 쓰거나 안 쓰거나"가 아니라 **필요한 부분만 골라 쓰는 것**이 적절하다는 판단을 하게 됨
+
+---
+
+## 2026-08-13 — 9장 Hands on : Weather Refinement
+
+### 1. Composable 분리
+
+`src/composables/useCitySearch.js` 신규 생성.
+
+초성 추출 배열(19개)과 유니코드 연산이 `WeatherHomeView.vue` 안에 약 30줄 들어 있었습니다.
+화면 컴포넌트가 "한글이 어떻게 인코딩되는가"까지 알고 있는 셈이라 책임이 섞여 있었습니다.
+
+```js
+// 변경 전 — 화면 컴포넌트 안에 CHOSUNG 배열 + getChosung + filter 로직
+// 변경 후 — 한 줄
+const { filteredCities: filteredWeatherList } = useCitySearch(cities, searchQuery)
+```
+
+Composable은 Mixin과 달리 어떤 값이 어디서 왔는지 호출부에 드러나므로 이름 충돌이나 출처 불명 문제가 없습니다.
+`unref`를 써서 호출부가 `ref`를 넘기든 배열을 넘기든 동작하도록 했습니다.
+
+### 2. 죽은 코드 정리
+
+| 파일                          | 처리 | 사유                                                    |
+| ----------------------------- | ---- | ------------------------------------------------------- |
+| `src/data/weatherMockData.js` | 삭제 | 기상특보까지 API 전환되어 참조처 없음                   |
+| `src/assets/exercise.css`     | 삭제 | 4장에서 스타일을 각 컴포넌트로 이관한 뒤 미사용         |
+| `WeatherParent.vue` 등        | 유지 | 단계별 산출물. import되지 않으므로 번들에 포함되지 않음 |
+
+`grep -rn`으로 참조처를 확인한 뒤 삭제했습니다.
+
+### 3. 스타일 다듬기
+
+- **카드 레이아웃을 세로 4단으로 재구성** — 가로 배치는 카드 폭이 좁아지면 날씨 설명이 글자 단위로 쪼개졌다. 지역명 → 설명 → 아이콘·기온·버튼 → 배지 순으로 나누어 각 줄이 카드 폭을 온전히 쓰도록 함. 결과적으로 최소 폭이 340px → 280px로 줄어 같은 화면에 더 많은 카드가 들어감
+- **`min-width: 0` 적용** — flex 자식은 기본 `min-width: auto`라 내용보다 작아지지 않는다. 0으로 낮춰야 `text-overflow: ellipsis`가 동작함
+- **배지 모서리를 버튼과 통일** — `border-radius: 999px` → `9px`
+- **지도 카드 배치를 비대칭으로** — 왼쪽은 패널 밖으로 잘리지 않도록 지도 위로 겹치고, 오른쪽은 마커를 가리지 않도록 여백을 둠
+- **요약 패널 항목 재구성** — "더운 지역" 절대 개수는 17개 기준에서 의미가 약해 비율(`12 / 17`)로 변경하고, 기온 차·비 오는 지역을 추가
+
+### 설계 판단 기록
+
+- **기온 차의 단위 변환** — 화씨 변환은 `×9/5 + 32`이지만, "차이"에는 `+32`를 적용하면 안 된다. 5°C 차이가 41°F 차이가 되어버리므로 `×9/5`만 적용
+- **판정 기준과 표시 단위 분리** — 더움/선선함 판정은 항상 섭씨 원본으로 수행하고, 표시 문구만 현재 단위로 환산. 화씨로 변환한 값(82 등)을 25와 비교하면 모든 지역이 "더움"이 됨
+
+---
+
+## 2026-08-13 — 10장 Hands on : Weather Deployment
+
+**배포 주소:** https://skala-vue-h8hk.vercel.app
+
+### 1. ESLint 통과
+
+```bash
+npm run lint    # Found 0 warnings and 0 errors
+```
+
+수정한 항목 3건.
+
+| 규칙                             | 대상                                   | 조치                                  |
+| -------------------------------- | -------------------------------------- | ------------------------------------- |
+| `vue/multi-word-component-names` | `Hourlystrip.vue`                      | `HourlyStrip.vue`로 변경              |
+| `no-unused-vars`                 | `SampleTwo.vue`의 `ref`                | 미사용 import 제거                    |
+| `no-unused-vars`                 | `WeatherHomeView.vue`의 `selectedCity` | `headerCity`로 대체되어 미사용 → 제거 |
+
+### 2. 환경변수 분리
+
+| 파일              | 용도             | Git  |
+| ----------------- | ---------------- | ---- |
+| `.env`            | 개발용 (실제 키) | 제외 |
+| `.env.production` | 배포용 (키 제외) | 제외 |
+| `.env.example`    | 견본             | 포함 |
+
+`.gitignore`를 `.env.*` + `!.env.example` 형태로 수정했습니다.
+기본값(`.env.local`, `.env.*.local`)만으로는 `.env.production`이 걸러지지 않기 때문입니다.
+
+```json
+"build:production": "vite build --mode production"
+```
+
+**키의 노출 범위를 접두사로 구분했습니다.**
+
+| 변수                       | 접두사   | 노출                                              |
+| -------------------------- | -------- | ------------------------------------------------- |
+| `VITE_OPENWEATHER_API_KEY` | 있음     | 클라이언트 번들에 포함                            |
+| `DATA_GO_KR_API_KEY`       | **없음** | 서버(프록시)에서만 사용, 브라우저로 전달되지 않음 |
+
+### 3. SPA 라우팅
+
+```json
+// vercel.json
+{ "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }] }
+```
+
+SPA는 실제 파일이 `index.html` 하나뿐이라, `/weather/seoul`로 직접 접속하면 서버가 404를 반환합니다.
+모든 경로를 `index.html`로 보내야 Vue Router가 경로를 해석할 수 있습니다.
+
+`(?!api/)`는 "api로 시작하지 않는 경로만"이라는 뜻으로, 서버리스 함수 경로가 가로채이지 않도록 제외했습니다.
+
+### 4. 공공데이터 CORS — 서버리스 함수
+
+배포 후 자외선·미세먼지·기상특보가 전부 실패했습니다.
+`vite.config.js`의 프록시는 **개발 서버 기능**이라 빌드 결과물에 포함되지 않기 때문입니다.
+
+Vercel이 루트의 `api/` 폴더를 서버리스 함수로 자동 인식한다는 점을 이용해 프록시를 구현했습니다.
+
+```
+개발  브라우저 → Vite 프록시    → data.go.kr
+배포  브라우저 → 서버리스 함수  → data.go.kr
+```
+
+**양쪽 다 `/api/data-go` 경로를 쓰도록 통일**해, 애플리케이션 코드는 환경을 구분하지 않습니다.
+서버 간 통신에는 CORS 제약이 없으므로 이 방식으로 우회됩니다.
+
+부수 효과로 **API 키가 서버에만 머물게 되어 보안이 개선**되었습니다.
+
+### 배포 과정에서 겪은 문제
+
+| 증상                      | 원인                                         | 해결                                            |
+| ------------------------- | -------------------------------------------- | ----------------------------------------------- |
+| 클로닝 직후 빌드 실패     | `package.json`에 스크립트가 JSON 밖에 추가됨 | 문법 수정                                       |
+| 화면은 뜨는데 데이터 없음 | Vercel에 환경변수 미등록                     | 대시보드에 등록 후 재배포                       |
+| 서버리스 함수 404         | `src/api/`에 파일을 둠                       | 루트 `api/`로 이동                              |
+| 공공데이터 401            | `.env` 키 이름에 `VITE_` 접두사가 남아 있음  | 접두사 제거                                     |
+| 공공데이터 504            | 에어코리아 응답 지연                         | 프록시 타임아웃 연장, 요청 개수 축소, 캐시 도입 |
+
+### 배포 후 검증
+
+| 항목                                          | 결과               |
+| --------------------------------------------- | ------------------ |
+| 17개 지역 데이터 표시                         | ✅                 |
+| `/weather/seoul` 직접 접속 (SPA 라우팅)       | ✅ 404 없음        |
+| `/abcd` 접속 (Catch-all)                      | ✅ 404 페이지 표시 |
+| 새로고침 후 즐겨찾기·단위 유지 (localStorage) | ✅                 |
+| 공공데이터 3종 (서버리스 프록시)              | ✅                 |
+
+### 배운 점 / 확인한 것
+
+- 환경변수는 **빌드 시점에 코드로 주입**되므로, 값을 바꾸면 재배포해야 반영됨
+- `VITE_` 접두사가 붙은 변수는 클라이언트 번들에 그대로 박힌다. 브라우저에서 소스를 열면 값이 보이므로, 노출되면 안 되는 키는 접두사를 붙이지 않고 서버에서만 다뤄야 함
+- 정적 배포본에는 개발 서버의 기능(프록시, HMR)이 포함되지 않는다. 개발 환경에서만 동작하는 코드가 있는지 배포 전에 점검해야 함
+- `npm run preview`는 빌드 결과물을 프록시 없이 서빙하므로, 배포 전에 같은 조건으로 미리 확인할 수 있음
+
+---
+
+## 최종 결과
+
+**배포 주소:** https://skala-vue-h8hk.vercel.app
+
+| 기능                           | 데이터 출처                           |
+| ------------------------------ | ------------------------------------- |
+| 전국 17개 지역 현재 날씨       | OpenWeather                           |
+| 전국 날씨 지도 (SVG 좌표 투영) | OpenWeather 좌표                      |
+| 시간대별(24h) · 5일 예보       | OpenWeather `/forecast`               |
+| 현재 위치 기반 날씨            | `navigator.geolocation` + OpenWeather |
+| 도시 검색 (한글·영문·초성)     | 로컬 필터 + OpenWeather               |
+| 자외선지수                     | 기상청 생활기상지수                   |
+| 미세먼지 · 초미세먼지          | 에어코리아                            |
+| 기상특보                       | 기상청 기상특보                       |
+| 즐겨찾기 · 단위 설정           | Pinia + localStorage                  |
