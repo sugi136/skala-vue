@@ -493,6 +493,7 @@ OpenWeather / 공공데이터포털
 - **검색 API 연동** — 로컬 필터 결과가 0건일 때 "API에서 찾기" 버튼이 나타나 목록에 없는 도시를 추가. 추가된 도시는 세션 동안만 유지되며, 즐겨찾기에 등록하면 새로고침 후에도 남음
   <img width="1391" height="314" alt="스크린샷 2026-08-13 오후 2 45 47" src="https://github.com/user-attachments/assets/749ac154-5f13-4437-8b53-e3db72ad8fcd" />
 
+- **검색 API에 한국 주요 도시 추가** - 17개 제외한 한국 주요 도시를 API에 한글로 검색해도 나오도록 변경
 - **현재 위치 기반 조회** — `navigator.geolocation`을 Promise로 감싸 `async/await`로 사용. 권한 거부·조회 실패는 정상적인 흐름으로 보고 조용히 기본 도시(서울)로 폴백하며, 사용자에게 에러를 노출하지 않음
 <img width="1304" height="357" alt="스크린샷 2026-08-13 오후 2 47 43" src="https://github.com/user-attachments/assets/d336733b-baa3-4837-b056-1d9429592026" />
 <img width="1318" height="348" alt="스크린샷 2026-08-13 오후 2 47 27" src="https://github.com/user-attachments/assets/43791d38-3ed9-45d9-8acf-c87ab6285c32" />
