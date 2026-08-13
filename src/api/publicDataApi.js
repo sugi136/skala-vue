@@ -3,39 +3,44 @@
 //
 // [역할] 공공데이터포털(data.go.kr) API 통신
 //   - 미세먼지  : 에어코리아 시도별 실시간 측정정보
-//   - 자외선    : 기상청 생활기상지수 조회서비스(4.0)
+//   - 자외선    : 기상청 생활기상지수 조회서비스
 //   - 기상특보  : 기상청 기상특보 조회서비스
 //
 // [CORS] data.go.kr 은 브라우저 직접 호출을 허용하지 않는다.
-//        개발 중에는 vite.config.js 의 proxy 로 우회하고,
-//        배포 시에는 서버리스 함수 등 별도 프록시가 필요하다.
-//        -> baseURL 을 '/api/data-go' 로 두고 Vite 가 대신 요청하게 한다.
+//        개발·배포 모두 /api/data-go 프록시를 거친다.
+//          개발  : vite.config.js 의 server.proxy
+//          배포  : api/data-go.js 서버리스 함수
+//        경로가 같으므로 코드는 환경을 구분하지 않아도 된다.
 //
-// [인증키] 계정당 1개로 모든 서비스 공용. 파라미터 이름은 serviceKey.
-//        [주의] 포털에 인코딩/디코딩 두 종류가 있는데 디코딩 키를 써야 한다.
-//               axios 가 자동으로 인코딩하므로, 인코딩 키를 넣으면
-//               '%2B' 가 '%252B' 로 이중 인코딩되어 인증에 실패한다.
+// [인증키] 프록시가 서버에서 주입하므로 여기서는 넘기지 않는다.
+//        VITE_ 접두사 없는 환경변수는 브라우저로 전달되지 않아
+//        키가 소스에 노출되지 않는다.
 // ============================================
 import axios from 'axios'
 
-const SERVICE_KEY = import.meta.env.VITE_DATA_GO_KR_API_KEY
-
-if (!SERVICE_KEY) {
-  console.warn('[publicDataApi] VITE_DATA_GO_KR_API_KEY 가 없습니다. .env 를 확인하세요.')
-}
-
 const publicClient = axios.create({
-  // Vite 프록시 경로. 실제 요청은 https://apis.data.go.kr 로 전달된다
   baseURL: '/api/data-go',
   timeout: 10000,
-  params: {
-    serviceKey: SERVICE_KEY,
-    // 기본 응답이 XML 이므로 JSON 을 명시한다.
-    // 서비스마다 파라미터 이름이 dataType / returnType 으로 다르다
-    dataType: 'JSON',
-    returnType: 'json',
-  },
 })
+
+/**
+ * 프록시를 통해 공공데이터포털에 요청한다.
+ * @param {string} path - 실제 엔드포인트 (예: '/1360000/...')
+ * @param {object} params - 쿼리 파라미터
+ */
+const requestPublicData = async (path, params) => {
+  const { data } = await publicClient.get('', {
+    params: {
+      path,
+      // 기본 응답이 XML 이므로 JSON 을 명시한다.
+      // 서비스마다 파라미터 이름이 dataType / returnType 으로 다르다
+      dataType: 'JSON',
+      returnType: 'json',
+      ...params,
+    },
+  })
+  return data
+}
 
 // --------------------------------------------
 // 미세먼지 — 에어코리아 시도별 실시간 측정정보
@@ -43,22 +48,15 @@ const publicClient = axios.create({
 // 시도명(서울, 경기 등)으로 조회하면 그 안의 측정소 목록이 전부 온다.
 // 대표값으로 쓰기 위해 유효한 값들의 평균을 낸다.
 // --------------------------------------------
-
-// 에어코리아 등급 코드 -> 한글
 const GRADE_LABEL = { 1: '좋음', 2: '보통', 3: '나쁨', 4: '매우나쁨' }
 
 export const fetchDustBySido = async (sidoName) => {
-  const { data } = await publicClient.get(
-    '/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty',
-    {
-      params: {
-        sidoName,
-        numOfRows: 100,
-        pageNo: 1,
-        ver: '1.3',
-      },
-    },
-  )
+  const data = await requestPublicData('/B552584/ArpltnInforInqireSvc/getCtprvnRltmMesureDnsty', {
+    sidoName,
+    numOfRows: 100,
+    pageNo: 1,
+    ver: '1.3',
+  })
 
   const items = data?.response?.body?.items ?? []
   if (items.length === 0) return null
@@ -83,7 +81,6 @@ export const fetchDustBySido = async (sidoName) => {
     pm25,
     // 등급은 평균값으로 다시 판정한다 (측정소마다 등급이 달라서)
     grade: pm10Grade(pm10),
-    // 가장 최근 측정 시각
     dataTime: items[0]?.dataTime ?? '',
     stationCount: pm10List.length,
   }
@@ -104,11 +101,11 @@ export const pm10Tone = (value) => {
 }
 
 // --------------------------------------------
-// 자외선지수 — 기상청 생활기상지수 조회서비스(4.0)
+// 자외선지수 — 기상청 생활기상지수 조회서비스
 //
 // [주의] 발표 시각이 정해져 있다. time 파라미터는 YYYYMMDDHH 형식이며
 //        06시 또는 18시 발표분만 조회된다.
-//        따라서 현재 시각을 그대로 넣으면 결과가 비어 있다.
+//        현재 시각을 그대로 넣으면 결과가 비어 있다.
 // --------------------------------------------
 
 /** 가장 최근 발표 시각(06 또는 18)을 YYYYMMDDHH 형식으로 만든다. */
@@ -136,16 +133,16 @@ const getLatestBaseTime = () => {
 }
 
 export const fetchUvByArea = async (areaNo) => {
-  const { data } = await publicClient.get('/1360000/LivingWthrIdxServiceV5/getUVIdxV5', {
-    params: {
-      areaNo,
-      time: getLatestBaseTime(),
-      numOfRows: 10,
-      pageNo: 1,
-    },
+  const data = await requestPublicData('/1360000/LivingWthrIdxServiceV5/getUVIdxV5', {
+    areaNo,
+    time: getLatestBaseTime(),
+    numOfRows: 10,
+    pageNo: 1,
   })
 
-  const item = data?.response?.body?.items?.item?.[0]
+  const raw = data?.response?.body?.items?.item
+  // [주의] 배열로 올 수도, 객체 하나로 올 수도 있다
+  const item = Array.isArray(raw) ? raw[0] : raw
   if (!item) return null
 
   // h0 = 발표 시점, h3 = 3시간 후 ... 현재 시점 값인 h0 을 쓴다
@@ -155,7 +152,7 @@ export const fetchUvByArea = async (areaNo) => {
   return { value, level: uvLevel(value) }
 }
 
-// 기상청 자외선지수 기준: 3미만 낮음 / 3~5 보통 / 6~7 높음 / 8~10 매우높음 / 11이상 위험
+// 기상청 자외선지수: 3미만 낮음 / 3~5 보통 / 6~7 높음 / 8~10 매우높음 / 11이상 위험
 export const uvLevel = (value) => {
   if (value >= 11) return '위험'
   if (value >= 8) return '매우높음'
@@ -180,15 +177,13 @@ export const fetchWeatherAlerts = async () => {
   const yyyy = now.getFullYear()
   const mm = String(now.getMonth() + 1).padStart(2, '0')
   const dd = String(now.getDate()).padStart(2, '0')
+  const today = `${yyyy}${mm}${dd}`
 
-  const { data } = await publicClient.get('/1360000/WthrWrnInfoService/getWthrWrnList', {
-    params: {
-      numOfRows: 50,
-      pageNo: 1,
-      // 오늘 하루치를 조회한다
-      fromTmFc: `${yyyy}${mm}${dd}`,
-      toTmFc: `${yyyy}${mm}${dd}`,
-    },
+  const data = await requestPublicData('/1360000/WthrWrnInfoService/getWthrWrnList', {
+    numOfRows: 50,
+    pageNo: 1,
+    fromTmFc: today,
+    toTmFc: today,
   })
 
   const items = data?.response?.body?.items?.item ?? []
@@ -210,7 +205,6 @@ export const filterAlertsByRegion = (allAlerts, regionName) => {
   return allAlerts
     .filter((item) => (item.t6 ?? '').includes(keyword) || (item.t7 ?? '').includes(keyword))
     .map((item, index) => {
-      // t3: 특보 종류, t4: 주의보/경보 구분이 문자열로 섞여 온다
       const title = item.title ?? `${item.t3 ?? '기상특보'}`
       const isAlert = title.includes('경보')
 
