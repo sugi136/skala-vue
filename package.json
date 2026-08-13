@@ -37,6 +37,6 @@
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   }
+  "build:production": "vite build --mode production"
 }
 
-"build:production": "vite build --mode production"
