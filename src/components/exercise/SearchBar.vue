@@ -62,7 +62,7 @@ const handleSearchClick = () => {
       <input
         type="text"
         :value="query"
-        placeholder="지역 이름 또는 초성 입력 (예: 서울, ㅅㅇ)"
+        placeholder="지역 이름 또는 초성 입력 (예: 서울, ㅅㅇ, 포항)"
         @input="handleInput"
         @keyup.enter="handleEnter"
       />
@@ -85,7 +85,8 @@ const handleSearchClick = () => {
       </el-button>
 
       <p class="fallback-hint">
-        영문 도시명으로 검색하세요 (예: Tokyo, Osaka)<br />
+        전국 주요 도시는 한글로 검색됩니다 (예: 포항, 여수, 강릉)<br />
+        목록에 없는 지역은 영문명으로도 검색할 수 있습니다.<br />
         추가한 지역은 새로고침하면 사라집니다. ★ 를 눌러 즐겨찾기에 저장하세요.
       </p>
     </div>

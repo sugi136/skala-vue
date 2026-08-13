@@ -14,6 +14,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 
 import { REGION_LIST, DEFAULT_CITY_ID, findRegionById } from '@/data/regionList.js'
+import { resolveSearchKeyword } from '@/data/cityNameMap.js'
 import {
   fetchWeatherByCities,
   fetchWeatherByCity,
@@ -170,14 +171,22 @@ export const useWeatherStore = defineStore('weather', () => {
     const trimmed = keyword.trim()
     if (!trimmed) return null
 
-    const { city, detail } = await searchCity(trimmed)
+    // [핵심] 한글 검색어를 영문 조회어로 변환한다.
+    //        매핑에 없으면 입력값을 그대로 쓰므로 영문 검색도 계속 동작한다.
+    const { query, koreanName } = resolveSearchKeyword(trimmed)
+
+    const { city, detail } = await searchCity(query)
+
+    // 매핑으로 찾은 도시는 사용자가 입력한 한글명을 표시명으로 쓴다.
+    // (API 응답에는 한글 도시명이 없다)
+    const resolved = koreanName ? { ...city, name: koreanName } : city
 
     // 이미 목록에 있으면 중복 추가하지 않는다
-    if (findCity.value(city.id)) return city.id
+    if (findCity.value(resolved.id)) return resolved.id
 
-    cities.value.push(city)
-    detailMap.value[city.id] = detail
-    return city.id
+    cities.value.push(resolved)
+    detailMap.value[resolved.id] = detail
+    return resolved.id
   }
 
   /**
