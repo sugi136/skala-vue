@@ -24,10 +24,10 @@ npm run dev      # http://localhost:5173
 | 4. Vue Components      | Weather Component   | ✅ 완료 |
 | 5. Vue Router          | Weather Router      | ✅ 완료 |
 | 6. Pinia               | Weather Store       | ✅ 완료 |
-| 7. Axios               | Weather Axios       | 예정    |
-| 8. UI Library          | Weather UI Library  | 예정    |
-| 9. Modern JavaScript   | Weather Refinement  | 예정    |
-| 10. Build & Deployment | Weather Deployment  | 예정    |
+| 7. Axios               | Weather Axios       | ✅ 완료 |
+| 8. UI Library          | Weather UI Library  | ✅ 완료 |
+| 9. Modern JavaScript   | Weather Refinement  | ✅ 완료 |
+| 10. Build & Deployment | Weather Deployment  | ✅ 완료 |
 
 ---
 
@@ -422,6 +422,7 @@ Catch-all 규칙은 반드시 배열 마지막에 배치. 위에 두면 모든 �
 - Vue Devtools의 Pinia 탭에서 두 store의 상태가 실시간으로 갱신되는 것을 확인
 - ℃/℉ 전환 시 대시보드 카드·요약 패널·시간대별 예보·5일 예보·상세 페이지의 온도가 동시에 바뀌고, 페이지를 이동했다 돌아와도 설정이 유지되는 것을 확인. 5장까지는 불가능했던 동작
 
+
 ## 2026-08-13 — 7장 Hands on : Weather Axios
 
 **파일:** `src/api/weatherApi.js`, `publicDataApi.js`, `api/data-go.js`, `src/stores/weatherStore.js`, `src/data/regionList.js`
@@ -460,9 +461,9 @@ weatherApi.js / publicDataApi.js  ── axios 인스턴스 · 응답 변환
 OpenWeather / 공공데이터포털
 ```
 
-**`weatherStore` 도입이 이번 단원의 가장 큰 구조 변화입니다.**
-이전에는 메인·상세·즐겨찾기 페이지가 각각 API를 호출해 같은 데이터를 중복 요청했습니다.
-지역이 17개로 늘어나면서 이 방식은 감당이 안 되어, store에 캐시를 두고 페이지들이 공유하도록 바꿨습니다.
+**`weatherStore` 도입이 이번 단원의 가장 큰 구조 변화**
+이전에는 메인·상세·즐겨찾기 페이지가 각각 API를 호출해 같은 데이터를 중복 요청
+지역이 17개로 늘어나면서 store에 캐시를 두고 페이지들이 공유하도록 변경
 
 | 경로                             | 네트워크 요청     |
 | -------------------------------- | ----------------- |
@@ -485,13 +486,26 @@ OpenWeather / 공공데이터포털
 ### Customization
 
 - **전국 17개 광역시·도로 확장** — 도 단위는 도청소재지를 대표 도시로 사용. `regionList.js`에 `query`(API 조회용) / `enName` / `name`(한글 표시) / `sidoName`(에어코리아) / `areaNo`(기상청)를 함께 관리
+- **전국 날씨 지도** — API 응답의 좌표(`lat`/`lon`)를 SVG에 선형 투영. 지도 라이브러리 없이 구현했으며, 마커에 날씨 아이콘·기온·즐겨찾기 별을 표시하고 클릭 시 연결선과 함께 상세 카드를 띄움
+  <img width="1435" height="871" alt="스크린샷 2026-08-13 오후 2 45 27" src="https://github.com/user-attachments/assets/4361f85e-f731-48e6-8abf-0eb3afebad87" />
+  
 - **`query`에 국가코드 `,KR` 부착** — `Gwangju` 같은 도시명은 해외에도 존재해, 국가코드 없이 조회하면 엉뚱한 지역이 반환됨
 - **검색 API 연동** — 로컬 필터 결과가 0건일 때 "API에서 찾기" 버튼이 나타나 목록에 없는 도시를 추가. 추가된 도시는 세션 동안만 유지되며, 즐겨찾기에 등록하면 새로고침 후에도 남음
+  <img width="1391" height="314" alt="스크린샷 2026-08-13 오후 2 45 47" src="https://github.com/user-attachments/assets/749ac154-5f13-4437-8b53-e3db72ad8fcd" />
+
 - **현재 위치 기반 조회** — `navigator.geolocation`을 Promise로 감싸 `async/await`로 사용. 권한 거부·조회 실패는 정상적인 흐름으로 보고 조용히 기본 도시(서울)로 폴백하며, 사용자에게 에러를 노출하지 않음
-- **전국 날씨 지도** — API 응답의 좌표(`lat`/`lon`)를 SVG에 선형 투영. 지도 라이브러리 없이 구현했으며, 마커에 날씨 아이콘·기온·즐겨찾기 별을 표시하고 클릭 시 연결선과 함께 상세 카드를 띄움
+<img width="1304" height="357" alt="스크린샷 2026-08-13 오후 2 47 43" src="https://github.com/user-attachments/assets/d336733b-baa3-4837-b056-1d9429592026" />
+<img width="1318" height="348" alt="스크린샷 2026-08-13 오후 2 47 27" src="https://github.com/user-attachments/assets/43791d38-3ed9-45d9-8acf-c87ab6285c32" />
+
 - **일출·일몰 반원 그래픽** — `SunArc.vue`. 현재 시각이 일출~일몰 구간에서 몇 %인지 계산해 반원 궤도 위 해의 위치로 표현. 지나온 구간은 실선, 남은 구간은 점선
+  <img width="313" height="232" alt="스크린샷 2026-08-13 오후 2 48 05" src="https://github.com/user-attachments/assets/246bee72-4f34-43c6-a823-71548065bd04" />
+
 - **기압을 atm 단위로 표시** — 1 atm = 1013.25 hPa로 환산. 원본 hPa 값은 보조 텍스트로 병기
+  <img width="158" height="249" alt="스크린샷 2026-08-13 오후 2 48 42" src="https://github.com/user-attachments/assets/6669cb62-c6f9-4e5a-9af8-be6dbbd51350" />
+
 - **강수확률 표시** — 시간대별·5일 예보에 `pop` 값을 백분율로 변환해 표시. 0%인 시간은 `—`로 처리해 화면이 지저분해지지 않도록 함
+  <img width="1433" height="588" alt="스크린샷 2026-08-13 오후 2 49 04" src="https://github.com/user-attachments/assets/f5c2d046-e098-4971-815f-22e1d7cc4d04" />
+
 
 ### 설계 판단 기록
 
@@ -546,7 +560,7 @@ app.use(ElementPlus, { locale: ko })
 - `el-input`의 `@input`은 이벤트 객체가 아니라 값(문자열)을 넘긴다. 네이티브 `<input>`과 시그니처가 달라 `e.target.value`를 쓰면 `undefined`가 됨
 - `app.use(ElementPlus)`와 CSS import 중 하나라도 빠지면 `<el-*>` 태그가 일반 텍스트로 렌더링됨. 버튼 색이 사라지고 라디오가 붙어 나오는 증상이 모두 같은 원인이었음
 - `:deep()`를 써야 `scoped` 안에서 자식 컴포넌트 내부 요소의 스타일을 덮어쓸 수 있음
-- 라이브러리는 "전부 쓰거나 안 쓰거나"가 아니라 **필요한 부분만 골라 쓰는 것**이 적절하다는 판단을 하게 됨
+- 라이브러리는 "전부 쓰거나 안 쓰거나"가 아니라 **필요한 부분만 골라 쓰는 것**이 적절하다는 사실을 경험
 
 ---
 
@@ -556,12 +570,13 @@ app.use(ElementPlus, { locale: ko })
 
 `src/composables/useCitySearch.js` 신규 생성.
 
-초성 추출 배열(19개)과 유니코드 연산이 `WeatherHomeView.vue` 안에 약 30줄 들어 있었습니다.
-화면 컴포넌트가 "한글이 어떻게 인코딩되는가"까지 알고 있는 셈이라 책임이 섞여 있었습니다.
+초성 추출 배열(19개)과 유니코드 연산이 `WeatherHomeView.vue` 섞여 있음
+-> 화면 컴포넌트와 한글 생성 책임 분리
 
 ```js
 // 변경 전 — 화면 컴포넌트 안에 CHOSUNG 배열 + getChosung + filter 로직
-// 변경 후 — 한 줄
+// 변경 후 — 한 줄<img width="533" height="317" alt="스크린샷 2026-08-13 오후 2 53 41" src="https://github.com/user-attachments/assets/97ffe4b4-df25-4dfa-a11d-8f2f2ba0ab39" />
+
 const { filteredCities: filteredWeatherList } = useCitySearch(cities, searchQuery)
 ```
 
@@ -576,15 +591,22 @@ Composable은 Mixin과 달리 어떤 값이 어디서 왔는지 호출부에 드
 | `src/assets/exercise.css`     | 삭제 | 4장에서 스타일을 각 컴포넌트로 이관한 뒤 미사용         |
 | `WeatherParent.vue` 등        | 유지 | 단계별 산출물. import되지 않으므로 번들에 포함되지 않음 |
 
-`grep -rn`으로 참조처를 확인한 뒤 삭제했습니다.
+`grep -rn`으로 참조처 확인 후 삭제
 
 ### 3. 스타일 다듬기
 
 - **카드 레이아웃을 세로 4단으로 재구성** — 가로 배치는 카드 폭이 좁아지면 날씨 설명이 글자 단위로 쪼개졌다. 지역명 → 설명 → 아이콘·기온·버튼 → 배지 순으로 나누어 각 줄이 카드 폭을 온전히 쓰도록 함. 결과적으로 최소 폭이 340px → 280px로 줄어 같은 화면에 더 많은 카드가 들어감
+  <img width="518" height="273" alt="스크린샷 2026-08-13 오후 2 55 22" src="https://github.com/user-attachments/assets/82549f8a-23b4-4077-950e-3a8fb2b0b594" />
+
 - **`min-width: 0` 적용** — flex 자식은 기본 `min-width: auto`라 내용보다 작아지지 않는다. 0으로 낮춰야 `text-overflow: ellipsis`가 동작함
 - **배지 모서리를 버튼과 통일** — `border-radius: 999px` → `9px`
 - **지도 카드 배치를 비대칭으로** — 왼쪽은 패널 밖으로 잘리지 않도록 지도 위로 겹치고, 오른쪽은 마커를 가리지 않도록 여백을 둠
+  <img width="970" height="799" alt="스크린샷 2026-08-13 오후 2 56 01" src="https://github.com/user-attachments/assets/4316c417-83dd-42c4-a892-c342a3a86da0" />
+<img width="925" height="838" alt="스크린샷 2026-08-13 오후 2 55 44" src="https://github.com/user-attachments/assets/4c99f07f-e806-4950-bc1f-c7cbcb98fe3f" />
+
 - **요약 패널 항목 재구성** — "더운 지역" 절대 개수는 17개 기준에서 의미가 약해 비율(`12 / 17`)로 변경하고, 기온 차·비 오는 지역을 추가
+  <img width="346" height="610" alt="스크린샷 2026-08-13 오후 2 56 36" src="https://github.com/user-attachments/assets/65f3851c-e2be-43a3-9d1d-47daae821e04" />
+
 
 ### 설계 판단 기록
 
@@ -693,7 +715,7 @@ Vercel이 루트의 `api/` 폴더를 서버리스 함수로 자동 인식한다�
 
 ## 최종 결과
 
-**배포 주소:** https://skala-vue-h8hk.vercel.app
+**배포 주소:** [https://skala-vue-sandy-one.vercel.app/]
 
 | 기능                           | 데이터 출처                           |
 | ------------------------------ | ------------------------------------- |
