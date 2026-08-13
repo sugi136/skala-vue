@@ -334,7 +334,7 @@ watchEffect(() => {
     <header class="app-header">
       <div class="header-top">
         <div>
-          <h1>과제 6: 날씨 (Axios)</h1>
+          <h1>오늘의 날씨</h1>
           <p class="header-date">
             {{ today }}
             <span v-if="headerCity" class="header-city">
